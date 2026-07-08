@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+#
+# install — symlink every skill in ./skills into the global config directory
+# of each supported AI tool (Claude, Codex, Cursor).
+#
+# For each skill directory `skills/<name>/`, a symlink is created at:
+#   ~/.claude/skills/<name>  -> <repo>/skills/<name>
+#   ~/.codex/skills/<name>   -> <repo>/skills/<name>
+#   ~/.cursor/skills/<name>  -> <repo>/skills/<name>
+#
+# Target directories are created if missing. Re-running is safe (idempotent):
+# stale symlinks are refreshed, correct ones are left alone, and real files or
+# directories are never clobbered — they are skipped with a warning.
+#
+# No dependencies beyond bash + coreutils. Usage: ./install [--dry-run] [-h]
+
+set -euo pipefail
+
+# --- resolve repo root from this script's own location -----------------------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SKILLS_SRC="$SCRIPT_DIR/skills"
+
+# --- destination roots -------------------------------------------------------
+TARGETS=(
+  "$HOME/.claude/skills"
+  "$HOME/.codex/skills"
+  "$HOME/.cursor/skills"
+)
+
+# --- options -----------------------------------------------------------------
+DRY_RUN=0
+
+usage() {
+  cat <<EOF
+install — link this repo's skills into your AI tool folders.
+
+Usage: ./install [options]
+
+Options:
+  --dry-run    Show what would happen without touching the filesystem.
+  -h, --help   Show this help.
+
+Skills are read from: $SKILLS_SRC
+Destinations:
+  ~/.claude/skills
+  ~/.codex/skills
+  ~/.cursor/skills
+EOF
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run) DRY_RUN=1 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "install: unknown option '$1'" >&2; usage >&2; exit 2 ;;
+  esac
+  shift
+done
+
+# --- colors (only when writing to a terminal) --------------------------------
+if [ -t 1 ]; then
+  C_GREEN=$'\033[32m'; C_YELLOW=$'\033[33m'; C_DIM=$'\033[2m'; C_RESET=$'\033[0m'
+else
+  C_GREEN=''; C_YELLOW=''; C_DIM=''; C_RESET=''
+fi
+
+# --- counters ----------------------------------------------------------------
+n_created=0 n_refreshed=0 n_ok=0 n_skipped=0
+
+# Present a $HOME-relative path for tidy output.
+tilde() { case "$1" in "$HOME"/*) printf '~%s' "${1#"$HOME"}";; *) printf '%s' "$1";; esac; }
+
+# link_one <src> <dest>
+# Apply the smart-idempotent policy to a single destination path.
+link_one() {
+  local src="$1" dest="$2" pretty
+  pretty="$(tilde "$dest")"
+
+  if [ -L "$dest" ]; then
+    # Existing symlink — compare its target to what we want.
+    local current
+    current="$(readlink "$dest")"
+    if [ "$current" = "$src" ]; then
+      printf '  %s= %s%s (ok)\n' "$C_DIM" "$pretty" "$C_RESET"
+      n_ok=$((n_ok + 1))
+      return
+    fi
+    # Stale/wrong symlink — refresh it.
+    if [ "$DRY_RUN" -eq 1 ]; then
+      printf '  %s~ %s%s (would refresh -> %s)\n' "$C_YELLOW" "$pretty" "$C_RESET" "$src"
+    else
+      rm -f "$dest"
+      ln -s "$src" "$dest"
+      printf '  %s~ %s%s (refreshed)\n' "$C_YELLOW" "$pretty" "$C_RESET"
+    fi
+    n_refreshed=$((n_refreshed + 1))
+    return
+  fi
+
+  if [ -e "$dest" ]; then
+    # A real file or directory lives here — never clobber it.
+    printf '  %s! %s%s (skipped: real path exists, not a symlink)\n' "$C_YELLOW" "$pretty" "$C_RESET"
+    n_skipped=$((n_skipped + 1))
+    return
+  fi
+
+  # Nothing there — create the link.
+  if [ "$DRY_RUN" -eq 1 ]; then
+    printf '  %s+ %s%s (would create -> %s)\n' "$C_GREEN" "$pretty" "$C_RESET" "$src"
+  else
+    ln -s "$src" "$dest"
+    printf '  %s+ %s%s (created)\n' "$C_GREEN" "$pretty" "$C_RESET"
+  fi
+  n_created=$((n_created + 1))
+}
+
+# --- discover skills ---------------------------------------------------------
+if [ ! -d "$SKILLS_SRC" ]; then
+  echo "install: no skills directory found at $SKILLS_SRC" >&2
+  exit 1
+fi
+
+skills=()
+for dir in "$SKILLS_SRC"/*/; do
+  [ -d "$dir" ] || continue                 # nothing matched the glob
+  name="$(basename "$dir")"
+  if [ ! -f "$dir/SKILL.md" ]; then
+    printf '%s! %s%s (skipped: no SKILL.md)\n' "$C_YELLOW" "$name" "$C_RESET"
+    continue
+  fi
+  skills+=("$name")
+done
+
+if [ "${#skills[@]}" -eq 0 ]; then
+  echo "install: no valid skills found in $SKILLS_SRC" >&2
+  exit 1
+fi
+
+[ "$DRY_RUN" -eq 1 ] && echo "${C_DIM}(dry run — no changes will be made)${C_RESET}"
+echo "Linking ${#skills[@]} skill(s) from $(tilde "$SKILLS_SRC")"
+
+# --- link loop ---------------------------------------------------------------
+for target in "${TARGETS[@]}"; do
+  echo
+  echo "→ $(tilde "$target")"
+  if [ "$DRY_RUN" -eq 0 ]; then
+    mkdir -p "$target"
+  fi
+  for name in "${skills[@]}"; do
+    link_one "$SKILLS_SRC/$name" "$target/$name"
+  done
+done
+
+# --- summary -----------------------------------------------------------------
+echo
+printf 'Done: %d created, %d refreshed, %d unchanged, %d skipped.\n' \
+  "$n_created" "$n_refreshed" "$n_ok" "$n_skipped"
