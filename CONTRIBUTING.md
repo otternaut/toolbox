@@ -61,7 +61,7 @@ the tool to reload skills.
 
 3. **Keep it tool-agnostic.** Describe the *process*, not a specific CLI or API.
    Let the agent use whatever tools its environment provides. Study
-   [`skills/analyze-code/SKILL.md`](skills/analyze-code/SKILL.md) as the
+   [`skills/otterbot-review/SKILL.md`](skills/otterbot-review/SKILL.md) as the
    reference example.
 
 4. **Keep `SKILL.md` focused.** Move long-form docs, worked examples, or
@@ -69,7 +69,7 @@ the tool to reload skills.
    when needed.
 
 5. **Add evals (recommended).** Create `evals/evals.json` following the shape in
-   [`skills/analyze-code/evals/evals.json`](skills/analyze-code/evals/evals.json):
+   [`skills/otterbot-review/evals/evals.json`](skills/otterbot-review/evals/evals.json):
    a top-level `skill_name` and an `evals` array of
    `{ id, prompt, expected_output, files }`. Cover the main path and the tricky
    edge cases.

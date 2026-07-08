@@ -1,10 +1,10 @@
 ---
-name: analyze-code
+name: otterbot-review
 description: Perform a principal-level code review, producing a structured Markdown report with severity-tagged findings and a scorecard. Given a pull/merge request URL, reviews that PR and submits the report as a formal review — approving it when the recommendation is Approve or Comment only, requesting changes otherwise. Given no URL, reviews the current local code changes and presents the report in the conversation. Use this whenever the user asks to "review this PR", "review my diff", "analyze this code change", "do a code review", "check this pull request for issues", pastes a pull-request URL and asks for feedback, or wants a merge-readiness assessment. Works with any git hosting provider (GitHub, GitLab, Bitbucket, etc.).
-version: 1.1.0
+version: 1.2.0
 ---
 
-# Analyze Code
+# Otterbot Review
 
 Review a code change like a senior engineering manager and principal-level
 reviewer would: friendly, concise, and high-signal. The output is a single
@@ -38,7 +38,7 @@ the presence or absence of a URL decides it.
 Fetch the PR's title, description, linked tickets, changed files, and diff
 using whatever access you have in the current environment (a CLI for that
 host, an API, a browsing tool). Use the PR's actual title in the review
-heading — never invent or assume one.
+summary line — never invent or assume one.
 
 If the PR data can't be fetched (no access, no matching tool, auth error),
 say so plainly and offer to review from a pasted diff instead of silently
@@ -124,9 +124,9 @@ section is a better signal than a padded one.
 Produce the report in exactly this structure:
 
 ```markdown
-# 🧑‍💻 Code Review: <actual PR/change title>
+# 🦦 OtterBot Code Review
 
-## ✨ Summary
+## ✨ Summary — <actual PR/change title>
 
 Briefly state overall quality, merge readiness, and the highest-risk
 concern, if any.
@@ -261,7 +261,7 @@ for what a full pass looks like):
       mode")
 - [ ] Surrounding context pulled in beyond the raw diff: description,
       linked tickets, existing tests, related code
-- [ ] Actual PR/change title used in the heading — never invented
+- [ ] Actual PR/change title used in the summary line — never invented
 - [ ] All six review focus areas considered (§2), even the ones that turn
       up nothing
 - [ ] Every finding has all five fields: Severity, Issue, Location, Why it

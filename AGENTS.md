@@ -76,7 +76,7 @@ Conventions:
   link to it, so the agent only loads the detail when it needs it.
 - Skills must stay **tool-agnostic**. Do not assume a specific CLI, API, or host
   is present; describe the *process* and let the agent use whatever tools its
-  environment provides. See `skills/analyze-code/SKILL.md` for the canonical
+  environment provides. See `skills/otterbot-review/SKILL.md` for the canonical
   example of this style.
 
 ### Optional supporting directories
@@ -85,7 +85,7 @@ Conventions:
   skill links to but that would bloat `SKILL.md` if inlined.
 - **`evals/evals.json`** — example prompts and expected outputs used to
   regression-test the skill. Follow the shape in
-  `skills/analyze-code/evals/evals.json`: a top-level `skill_name` plus an
+  `skills/otterbot-review/evals/evals.json`: a top-level `skill_name` plus an
   `evals` array of `{ id, prompt, expected_output, files }`.
 
 ## Installation model

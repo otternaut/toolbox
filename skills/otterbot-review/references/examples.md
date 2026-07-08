@@ -16,9 +16,9 @@ in the conversation (§6).
 **Report produced:**
 
 ```markdown
-# 🧑‍💻 Code Review: Add rate limiting to payment webhook handler
+# 🦦 OtterBot Code Review
 
-## ✨ Summary
+## ✨ Summary — Add rate limiting to payment webhook handler
 
 Solid, focused change that adds a token-bucket limiter in front of the
 webhook endpoint. Mergeable after the missing-lock issue below is fixed —
@@ -113,9 +113,9 @@ in the conversation only; nothing is posted anywhere (§6).
 **Report produced:**
 
 ```markdown
-# 🧑‍💻 Code Review: Add CSV export for merchant transactions
+# 🦦 OtterBot Code Review
 
-## ✨ Summary
+## ✨ Summary — Add CSV export for merchant transactions
 
 Small, well-scoped addition. One real gap: the new export endpoint has no
 authorization check, so any authenticated user could export any merchant's
