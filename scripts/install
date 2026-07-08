@@ -12,13 +12,16 @@
 # stale symlinks are refreshed, correct ones are left alone, and real files or
 # directories are never clobbered — they are skipped with a warning.
 #
-# No dependencies beyond bash + coreutils. Usage: ./install [--dry-run] [-h]
+# No dependencies beyond bash + coreutils.
+# Usage: ./scripts/install [--dry-run] [-h]
 
 set -euo pipefail
 
 # --- resolve repo root from this script's own location -----------------------
+# This script lives in <repo>/scripts, so the repo root is one level up.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SKILLS_SRC="$SCRIPT_DIR/skills"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+SKILLS_SRC="$REPO_ROOT/skills"
 
 # --- destination roots -------------------------------------------------------
 TARGETS=(
@@ -34,7 +37,7 @@ usage() {
   cat <<EOF
 install — link this repo's skills into your AI tool folders.
 
-Usage: ./install [options]
+Usage: ./scripts/install [options]
 
 Options:
   --dry-run    Show what would happen without touching the filesystem.
@@ -150,6 +153,33 @@ for target in "${TARGETS[@]}"; do
     link_one "$SKILLS_SRC/$name" "$target/$name"
   done
 done
+
+# --- git hooks ---------------------------------------------------------------
+# Point this repo's git at .githooks so the pre-commit hook keeps README.md's
+# skills table in sync automatically. Only meaningful inside the repo's own
+# git checkout; harmless to skip otherwise.
+setup_git_hooks() {
+  local hooks_dir="$REPO_ROOT/.githooks"
+  [ -d "$hooks_dir" ] || return 0
+  git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+
+  echo
+  echo "→ git hooks"
+  local current
+  current="$(git -C "$REPO_ROOT" config --local --get core.hooksPath 2>/dev/null || true)"
+  if [ "$current" = ".githooks" ]; then
+    printf '  %s= core.hooksPath already set to .githooks (ok)%s\n' "$C_DIM" "$C_RESET"
+    return 0
+  fi
+  if [ "$DRY_RUN" -eq 1 ]; then
+    printf '  %s~ would set core.hooksPath -> .githooks%s\n' "$C_YELLOW" "$C_RESET"
+  else
+    git -C "$REPO_ROOT" config --local core.hooksPath .githooks
+    printf '  %s+ core.hooksPath set to .githooks%s\n' "$C_GREEN" "$C_RESET"
+  fi
+}
+
+setup_git_hooks
 
 # --- summary -----------------------------------------------------------------
 echo

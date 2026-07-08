@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+#
+# pre-commit — keep README.md's skills table in sync with the skills.
+#
+# Regenerates the "Available skills" table from each SKILL.md's frontmatter and,
+# if it changed, re-stages README.md so the commit always includes an up-to-date
+# table. Enabled by `git config core.hooksPath .githooks`, which the installer
+# (scripts/install) sets up for you.
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+UPDATER="$REPO_ROOT/scripts/update-readme"
+
+[ -x "$UPDATER" ] || exit 0   # nothing to do if the script is missing
+
+"$UPDATER" >/dev/null
+
+# If the table changed, fold README.md back into this commit.
+if ! git diff --quiet -- README.md; then
+  git add README.md
+  echo "pre-commit: refreshed README.md skills table and re-staged it."
+fi
