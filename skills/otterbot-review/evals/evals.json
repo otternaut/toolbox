@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "review this PR: https://github.com/acme/widgets/pull/42",
-      "expected_output": "A single Markdown report titled with PR #42's actual title (fetched, not invented), following the §5 template (title line, Summary, Requirements, Scorecard, Findings grouped by severity, Testing Notes). The report is posted as a comment on PR #42 via whatever host tool is available, and also shown in the conversation. If PR data can't be fetched, the agent says so and offers to review a pasted diff instead rather than silently doing something else.",
+      "expected_output": "A single Markdown report following the §5 template (Summary, Requirements, Scorecard, Findings grouped by severity, Testing), informed by PR #42's actual title and description (fetched, not invented). The report is posted as a comment on PR #42 via whatever host tool is available, and also shown in the conversation. If PR data can't be fetched, the agent says so and offers to review a pasted diff instead rather than silently doing something else.",
       "files": []
     },
     {

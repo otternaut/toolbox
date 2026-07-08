@@ -1,7 +1,7 @@
 ---
 name: otterbot-review
 description: Perform a principal-level code review, producing a structured Markdown report with severity-tagged findings and a scorecard. Given a pull/merge request URL, reviews that PR and submits the report as a formal review — approving it when the recommendation is Approve or Comment only, requesting changes otherwise. Given no URL, reviews the current local code changes and presents the report in the conversation. Use this whenever the user asks to "review this PR", "review my diff", "analyze this code change", "do a code review", "check this pull request for issues", pastes a pull-request URL and asks for feedback, or wants a merge-readiness assessment. Works with any git hosting provider (GitHub, GitLab, Bitbucket, etc.).
-version: 1.2.1
+version: 1.5.0
 ---
 
 # Otterbot Review
@@ -37,8 +37,8 @@ the presence or absence of a URL decides it.
 
 Fetch the PR's title, description, linked tickets, changed files, and diff
 using whatever access you have in the current environment (a CLI for that
-host, an API, a browsing tool). Use the PR's actual title in the review
-summary line — never invent or assume one.
+host, an API, a browsing tool). Use this context to inform the review —
+never invent or assume it.
 
 If the PR data can't be fetched (no access, no matching tool, auth error),
 say so plainly and offer to review from a pasted diff instead of silently
@@ -122,25 +122,31 @@ section is a better signal than a padded one.
 ## 5. Output format
 
 Produce the report in exactly this structure. Keep it clean and scannable:
-plain section headings, the change title on its own line, and each finding
-in its own callout card. Do **not** separate cards with horizontal rules
-(`---`) — the blockquote already sets each finding apart, so the rules only
-add visual noise.
+plain section headings and each finding in its own callout card. Separate
+the title and each top-level section (Summary, Requirements, Scorecard,
+Findings, Testing) with a horizontal rule (`---`) so the report reads
+as distinct blocks. Do **not** add horizontal rules between individual
+finding cards within Findings — the blockquote already sets each finding
+apart, so rules there only add visual noise.
 
 ```markdown
-### 🦦 otterbot - code review
+### 🦦 OtterBot · Code Review
 
-**<actual PR/change title>**
+---
 
 ### ✨ Summary
 
 Briefly state overall quality, merge readiness, and the highest-risk
 concern, if any.
 
+---
+
 ### 📋 Requirements
 
 State whether the change appears to satisfy the intended business/product
 requirements. Note any ambiguity or missing acceptance criteria.
+
+---
 
 ### 📊 Scorecard
 
@@ -167,12 +173,16 @@ width and overflow as needed.
 
 Explain the recommendation in 1-2 concise sentences.
 
+---
+
 ### 🔎 Findings
 
 Group findings by severity, most severe first. Severity headings use the
 exact emoji and labels from §3 (🔴 Critical, 🟠 High, 🟡 Medium, 🔵 Low,
-⚪ Optional). Omit empty severity sections unless there are no findings at
-all.
+⚪ Optional) followed by a middot and the count of findings in that
+section, e.g. `#### 🟠 High · 2 Issues`. Use singular "Issue" for a count
+of exactly one, e.g. `#### 🟡 Medium · 1 Issue`. Omit empty severity
+sections unless there are no findings at all.
 
 Present each finding as a blockquote card: a bold one-line issue statement,
 then a tight bullet list, and finally — when you have the source and it makes
@@ -184,7 +194,7 @@ concern). Every line of the code block, **including its fences**, is
 prefixed with `>` so it stays inside the card. Put a blank line between
 consecutive cards so they render as separate callouts — no horizontal rules:
 
-#### 🟠 High
+#### 🟠 High · 2 Issues
 
 > **Clear, concise statement of the problem.**
 >
@@ -204,7 +214,7 @@ consecutive cards so they render as separate callouts — no horizontal rules:
 > - **Why it matters:** The risk.
 > - **Fix:** The fix.
 
-#### 🟡 Medium
+#### 🟡 Medium · 1 Issue
 
 > **Issue stated in one line.**
 >
@@ -212,10 +222,41 @@ consecutive cards so they render as separate callouts — no horizontal rules:
 > - **Why it matters:** ...
 > - **Fix:** ...
 
-### 🧪 Testing Notes
+---
 
-Briefly summarize test coverage, missing cases, and any recommended manual
-verification.
+### 🧪 Testing
+
+Give a thorough, specific picture of testing — not a one-line note. Cover,
+as applicable:
+
+- **Existing coverage:** which tests exist (unit, integration, e2e, manual
+  QA) and exactly what they exercise — file/test names when you have them.
+- **Coverage gaps:** concrete scenarios that aren't covered — edge cases,
+  error paths, concurrency, migrations, rollback, permission boundaries —
+  especially any gap that relates directly to a finding above.
+- **Recommended manual verification:** specific steps worth running by
+  hand before or after merge when automated coverage doesn't fully address
+  the risk (e.g. load-testing a race condition, exercising a failure mode
+  that's hard to simulate in CI).
+
+Use blockquote cards matching the Findings style: a bold one-line point,
+then a tight bullet list of specifics underneath when there's more to say.
+Blank line between cards, no horizontal rules.
+
+> **Existing coverage.**
+>
+> - `rateLimiter.test.ts` covers a single request under the limit and a single request over it.
+> - No coverage for concurrent requests hitting the same merchant key.
+
+> **Coverage gaps.**
+>
+> - Concurrency: the race condition in the High finding above has no test guarding it.
+> - Redis-down behavior: no test simulates a Redis connection failure to verify the handler's response.
+
+> **Recommended manual verification.**
+>
+> - Load-test the endpoint with concurrent requests from a single merchant to confirm the limiter holds once the race is fixed.
+> - Manually break the Redis connection in staging to observe current failure behavior before deciding on a fallback.
 ```
 
 ## 6. Delivering the review
@@ -257,14 +298,14 @@ for what a full pass looks like):
       mode")
 - [ ] Surrounding context pulled in beyond the raw diff: description,
       linked tickets, existing tests, related code
-- [ ] Actual PR/change title used as the report's title line — never invented
 - [ ] All six review focus areas considered (§2), even the ones that turn
       up nothing
 - [ ] Every finding has all five fields: Severity, Issue, Location, Why it
       matters, Recommended fix
 - [ ] No findings invented just to fill an empty severity bucket
 - [ ] Output follows the exact §5 structure, with empty severity sections
-      omitted
+      omitted, top-level sections separated by horizontal rules, and each
+      severity heading tagged with its finding count
 - [ ] Scorecard notes and Overall Score actually reflect the findings, not
       a generic/default number
 - [ ] Delivery matches mode: PR mode submits a formal review **and** shows
@@ -281,18 +322,17 @@ for what a full pass looks like):
 > "review https://github.com/acme/widgets/pull/42"
 
 → Fetch PR #42's title, description, and diff from the host; produce the
-report in §5's format using that title; submit it as a formal review on
-PR #42 — approved if the Merge Recommendation is Approve or Comment only,
-changes requested otherwise; also show it in the conversation.
+report in §5's format; submit it as a formal review on PR #42 — approved
+if the Merge Recommendation is Approve or Comment only, changes requested
+otherwise; also show it in the conversation.
 
 **Local review mode** — no URL, uncommitted changes exist:
 
 > "review my changes before I open a PR"
 
 → Run `git status` to see tracked *and* untracked changes, diff them (per
-the "Local review mode" steps above), produce the report using a
-descriptive title (e.g. from the branch name or a one-line summary of the
-diff), and show it in the conversation only.
+the "Local review mode" steps above), produce the report, and show it in
+the conversation only.
 
 **Local review mode** — no URL, no uncommitted changes:
 
