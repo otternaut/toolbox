@@ -1,7 +1,7 @@
 ---
 name: otterbot-review
 description: Perform a principal-level code review, producing a structured Markdown report with severity-tagged findings and a scorecard. Given a pull/merge request URL, reviews that PR and submits the report as a formal review — approving it when the recommendation is Approve or Comment Only, requesting changes otherwise. Given no URL, reviews the current local code changes and presents the report in the conversation. Use this whenever the user asks to "review this PR", "review my diff", "analyze this code change", "do a code review", "check this pull request for issues", pastes a pull-request URL and asks for feedback, or wants a merge-readiness assessment. Works with any git hosting provider (GitHub, GitLab, Bitbucket, etc.).
-version: 1.5.0
+version: 1.5.1
 ---
 
 # Otterbot Review
@@ -123,7 +123,7 @@ section is a better signal than a padded one.
 
 Produce the report in exactly this structure. Keep it clean and scannable:
 plain section headings and each finding in its own callout card. Use a
-top-level heading (`#`) for the title so its underline rule visually
+top-level heading (`##`) for the title so its underline rule visually
 separates it from the rest of the report. Do **not** add horizontal rules
 anywhere else — not between top-level sections (Summary, Requirements,
 Scorecard, Recommendation, Findings, Testing) and not between individual finding cards
@@ -137,12 +137,12 @@ Briefly state overall quality, merge readiness, and the highest-risk
 concern, if any. Leave the verdict itself to the Recommendation section —
 the Summary sets up the narrative, not the decision.
 
-## 📋 Requirements
+### 📋 Requirements
 
 State whether the change appears to satisfy the intended business/product
 requirements. Note any ambiguity or missing acceptance criteria.
 
-## 📊 Scorecard
+### 📊 Scorecard
 
 Score each category from 0-100, where 100 means excellent and merge-ready
 with no meaningful concerns.
@@ -176,11 +176,11 @@ name so it ties back to the table. Skip categories that don't need comment.
 - **Testing:** Brief rationale.
 - **Security:** Brief rationale.
 
-## ⚠️ Recommendation · Request Changes
+### ⚠️ Recommendation · Request Changes
 
 The verdict lives in the heading itself: set the emoji dynamically to match
-the call and name the verdict after a middot — `## ✅ Recommendation · Approve`,
-`## ⚠️ Recommendation · Request Changes`, or `## 💬 Recommendation · Comment
+the call and name the verdict after a middot — `### ✅ Recommendation · Approve`,
+`### ⚠️ Recommendation · Request Changes`, or `### 💬 Recommendation · Comment
 Only`. This keeps the section identifiable while surfacing the decision in the
 header's own underline rule, with no separate banner line in the body.
 
@@ -199,13 +199,13 @@ Explain the recommendation in 1-2 concise sentences.
 - Concrete must-fix item that gates merge. (High)
 - Another must-fix item. (Medium)
 
-## 🔎 Findings
+### 🔎 Findings
 
 Group findings by severity, most severe first. Severity headings use the
 exact emoji and labels from §3 (🔴 Critical, 🟠 High, 🟡 Medium, 🔵 Low,
 ⚪ Optional) followed by a middot and the count of findings in that
-section, e.g. `### 🟠 High · 2 Issues`. Use singular "Issue" for a count
-of exactly one, e.g. `### 🟡 Medium · 1 Issue`. Omit empty severity
+section, e.g. `#### 🟠 High · 2 Issues`. Use singular "Issue" for a count
+of exactly one, e.g. `#### 🟡 Medium · 1 Issue`. Omit empty severity
 sections unless there are no findings at all.
 
 Present each finding as a blockquote card: a bold one-line issue statement,
@@ -218,7 +218,7 @@ concern). Every line of the code block, **including its fences**, is
 prefixed with `>` so it stays inside the card. Put a blank line between
 consecutive cards so they render as separate callouts — no horizontal rules:
 
-### 🟠 High · 2 Issues
+#### 🟠 High · 2 Issues
 
 > **Clear, concise statement of the problem.**
 >
@@ -238,7 +238,7 @@ consecutive cards so they render as separate callouts — no horizontal rules:
 > - **Why it matters:** The risk.
 > - **Fix:** The fix.
 
-### 🟡 Medium · 1 Issue
+#### 🟡 Medium · 1 Issue
 
 > **Issue stated in one line.**
 >
@@ -246,7 +246,7 @@ consecutive cards so they render as separate callouts — no horizontal rules:
 > - **Why it matters:** ...
 > - **Fix:** ...
 
-## 🧪 Testing
+### 🧪 Testing
 
 Give a thorough, specific picture of testing — not a one-line note. Cover,
 as applicable:
