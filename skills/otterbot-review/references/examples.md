@@ -10,8 +10,8 @@ specificity and the exact formatting expected, not just the shape.
 
 **What happens:** a PR URL is present, so this is PR review mode (§1). The
 PR's title, description, and diff are fetched from the host. The report
-below is generated, posted as a single comment on PR #142, and also shown
-in the conversation (§6).
+below is generated, submitted as a formal review on PR #142, and also shown
+in the conversation (§7).
 
 **Report produced:**
 
@@ -125,7 +125,7 @@ defeats the ticket's purpose — worth a fix before merge, not a fast-follow.
 status` shows one modified file and one new (untracked) file — both are
 included in the diff per the "Local review mode" steps, since a plain
 `git diff` alone would have missed the untracked file. The report is shown
-in the conversation only; nothing is posted anywhere (§6).
+in the conversation only; nothing is posted anywhere (§7).
 
 **Report produced:**
 

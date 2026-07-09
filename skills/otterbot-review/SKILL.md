@@ -1,7 +1,7 @@
 ---
 name: otterbot-review
 description: Perform a principal-level code review, producing a structured Markdown report with severity-tagged findings and a scorecard. Given a pull/merge request URL, reviews that PR and submits the report as a formal review — approving it when the recommendation is Approve or Comment Only, requesting changes otherwise. Given no URL, reviews the current local code changes and presents the report in the conversation. Use this whenever the user asks to "review this PR", "review my diff", "analyze this code change", "do a code review", "check this pull request for issues", pastes a pull-request URL and asks for feedback, or wants a merge-readiness assessment. Works with any git hosting provider (GitHub, GitLab, Bitbucket, etc.).
-version: 1.5.1
+version: 1.6.0
 ---
 
 # Otterbot Review
@@ -24,9 +24,9 @@ pull/merge request URL (GitHub, GitLab, Bitbucket, or similar).
 
 - **PR URL present → PR review mode.** Review that PR and, at the end,
   submit the report as a formal review whose verdict (approve vs. changes
-  requested) follows the Merge Recommendation. See §6.
+  requested) follows the Merge Recommendation. See §7.
 - **No PR URL → local review mode.** Review the current local code changes
-  in this repository and present the report in the conversation. See §6.
+  in this repository and present the report in the conversation. See §7.
 
 If the user's intent is ambiguous in some other way (e.g. multiple PR links,
 or a claim of local changes that don't actually exist), ask before
@@ -88,7 +88,81 @@ Evaluate the change for:
 - **Security and data integrity:** authorization, unsafe inputs, secret
   leakage, validation gaps, data loss, and sensitive data handling.
 
-## 3. Severity levels
+## 3. Parallel specialist review
+
+After gathering the change set and surrounding context, use subagents when the
+current environment supports them. The goal is faster review without weakening
+the judgment: specialists run in parallel, then their work is reconciled into
+one final principal-level report.
+
+Launch one specialist per scorecard category:
+
+- **Correctness specialist:** bugs, edge cases, broken logic, races, error
+  handling, and requirement fit.
+- **Completeness specialist:** missing states, validation, integrations,
+  cleanup, migrations, rollout needs, and partial implementation.
+- **Regression Risk specialist:** side effects on existing flows, APIs, data,
+  UI behavior, permissions, performance, deployment, compatibility, and
+  rollback.
+- **Code Quality specialist:** readability, structure, naming, duplication,
+  abstractions, typing, local conventions, maintainability, and unnecessary
+  complexity.
+- **Testing specialist:** existing coverage, missing automated tests,
+  regression tests, contract/integration coverage, and manual verification
+  proportional to risk.
+- **Security specialist:** authorization, unsafe inputs, secret leakage,
+  validation gaps, data loss, sensitive data handling, supply-chain exposure,
+  and privacy concerns.
+
+Give every specialist the same factual packet: mode, PR or local change
+description, full diff including untracked files, relevant surrounding code,
+tests, requirements, linked tickets, and any repo-specific guidance. Tell each
+specialist to stay inside its category but to report cross-category evidence
+when it changes severity or merge readiness. Ask each specialist to return:
+
+- Category score from 0-100 with a concise rationale.
+- Candidate findings with severity, issue, location, why it matters,
+  recommended fix, and evidence.
+- Blocking/non-blocking recommendation for that category.
+- Confidence level and the facts or assumptions the confidence depends on.
+- Missing context that would materially change the conclusion.
+
+Run these specialists concurrently when possible. If the environment has no
+subagent capability, perform the same six specialist passes yourself in a
+single thread; do not skip any category or change the report format.
+
+### Specialist debate and adjudication
+
+Once all specialist passes return, synthesize them through an explicit
+challenge round before writing the report:
+
+1. Compare overlapping findings and merge duplicates, keeping the clearest
+   location, impact statement, and fix.
+2. Challenge each potential blocker from the opposite direction: ask what
+   evidence would make it non-blocking, and whether that evidence is present.
+3. Challenge each approve/comment-only path from the failure direction: ask
+   what user, data, security, deploy, rollback, or compatibility issue could
+   still make the change unsafe to merge.
+4. Reconcile score disagreements by tying scores to concrete risk, coverage,
+   and findings. Do not average scores mechanically if one category found a
+   severe issue that changes merge readiness.
+5. Drop speculative findings that lack code, requirement, or operational
+   evidence. Keep well-supported findings even if only one specialist found
+   them.
+6. Choose the final verdict from the reconciled evidence:
+   - **Request Changes** when any Critical/High issue blocks safe merge, or
+     when a Medium issue is directly tied to an unmet requirement, data loss,
+     security exposure, or untested high-risk behavior.
+   - **Comment Only** when the change is mergeable but has meaningful
+     non-blocking concerns worth recording.
+   - **Approve** when the change is merge-ready and remaining concerns, if
+     any, are optional or low-risk.
+
+The debate is an internal quality gate. The delivered output remains the
+single report in §6; do not include raw specialist transcripts unless the user
+explicitly asks for them.
+
+## 4. Severity levels
 
 Use exactly one severity per finding:
 
@@ -103,7 +177,7 @@ Use exactly one severity per finding:
 - ⚪ **Optional** — Non-blocking suggestion, alternative approach, or future
   enhancement.
 
-## 4. Review standards
+## 5. Review standards
 
 For each finding, include:
 
@@ -119,7 +193,7 @@ Avoid vague comments like "clean this up" unless the impact and fix are
 clear. Don't invent findings to fill out every severity bucket — an empty
 section is a better signal than a padded one.
 
-## 5. Output format
+## 6. Output format
 
 Produce the report in exactly this structure. Keep it clean and scannable:
 plain section headings and each finding in its own callout card. Use a
@@ -202,7 +276,7 @@ Explain the recommendation in 1-2 concise sentences.
 ### 🔎 Findings
 
 Group findings by severity, most severe first. Severity headings use the
-exact emoji and labels from §3 (🔴 Critical, 🟠 High, 🟡 Medium, 🔵 Low,
+exact emoji and labels from §4 (🔴 Critical, 🟠 High, 🟡 Medium, 🔵 Low,
 ⚪ Optional) followed by a middot and the count of findings in that
 section, e.g. `#### 🟠 High · 2 Issues`. Use singular "Issue" for a count
 of exactly one, e.g. `#### 🟡 Medium · 1 Issue`. Omit empty severity
@@ -281,14 +355,14 @@ Blank line between cards, no horizontal rules.
 > - Manually break the Redis connection in staging to observe current failure behavior before deciding on a fallback.
 ```
 
-## 6. Delivering the review
+## 7. Delivering the review
 
 Delivery follows the mode determined in §1:
 
 - **PR review mode:** submit the completed report as a single formal review
   on the PR/MR — not just a plain comment — using whatever tool your
   environment provides for that host (e.g. a hosting-provider CLI or API).
-  Set the review verdict from the **Recommendation** in §5:
+  Set the review verdict from the **Recommendation** in §6:
 
   - ✅ **Approve** or 💬 **Comment Only** → submit the review as **approved**.
   - ⚠️ **Request Changes** → submit the review as **changes requested**.
@@ -308,7 +382,7 @@ Delivery follows the mode determined in §1:
   is no PR to comment on, and nothing should be published anywhere else
   unless the user explicitly asks for that.
 
-## 7. Completeness checklist
+## 8. Completeness checklist
 
 Before delivering the report, confirm all of these — they're drawn directly
 from mistakes this skill has made in practice (see `references/examples.md`
@@ -322,18 +396,23 @@ for what a full pass looks like):
       linked tickets, existing tests, related code
 - [ ] All six review focus areas considered (§2), even the ones that turn
       up nothing
+- [ ] One specialist pass completed for each scorecard category, using
+      parallel subagents when available and an explicit serial fallback when
+      they are not (§3)
+- [ ] Specialist results were challenged and reconciled before scoring or
+      choosing the final verdict (§3, "Specialist debate and adjudication")
 - [ ] Every finding has all five fields: Severity, Issue, Location, Why it
       matters, Recommended fix
 - [ ] No findings invented just to fill an empty severity bucket
-- [ ] Output follows the exact §5 structure, with empty severity sections
-      omitted, top-level sections separated by horizontal rules, and each
-      severity heading tagged with its finding count
+- [ ] Output follows the exact §6 structure, with empty severity sections
+      omitted, no horizontal rules, and each severity heading tagged with its
+      finding count
 - [ ] Scorecard notes and Overall Score actually reflect the findings, not
       a generic/default number
 - [ ] Delivery matches mode: PR mode submits a formal review **and** shows
       the report in-conversation; local mode shows it in-conversation only
 - [ ] PR review verdict matches the Merge Recommendation: Approve or
-      Comment Only → approved; Request Changes → changes requested (§6)
+      Comment Only → approved; Request Changes → changes requested (§7)
 - [ ] Any fetch or post failure is stated explicitly, not silently worked
       around
 
@@ -344,7 +423,7 @@ for what a full pass looks like):
 > "review https://github.com/acme/widgets/pull/42"
 
 → Fetch PR #42's title, description, and diff from the host; produce the
-report in §5's format; submit it as a formal review on PR #42 — approved
+report in §6's format; submit it as a formal review on PR #42 — approved
 if the Merge Recommendation is Approve or Comment Only, changes requested
 otherwise; also show it in the conversation.
 
