@@ -1,7 +1,7 @@
 ---
 name: otterbot-review
 description: Perform a principal-level code review, producing a structured Review Council post with Specialist Scores and inline source-specific findings. Given a pull/merge request URL, reviews that PR and delivers the report with the correct verdict semantics — approving when the recommendation is Ship It!, commenting neutrally when it is Comment Only, and requesting changes otherwise. Given no URL, reviews the current local code changes and presents the report in the conversation. Use this whenever the user asks to "review this PR", "review my diff", "analyze this code change", "do a code review", "check this pull request for issues", pastes a pull-request URL and asks for feedback, or wants a merge-readiness assessment. Works with any git hosting provider (GitHub, GitLab, Bitbucket, etc.).
-version: 1.11.0
+version: 1.12.0
 ---
 
 # Otterbot Review
@@ -19,10 +19,12 @@ etc.) rather than assuming a specific one — the review process below is what
 matters, not the plumbing.
 
 When running inside super.engineering, the in-app review comments are a
-delivery surface. Use the documented `sc worktree ...` commands for
+secondary delivery surface. Use the documented `sc worktree ...` commands for
 super.engineering-managed state, including `sc worktree status --json` for the
-target/base branch and `sc worktree review-add ...` for review comments. Do not
-infer the target branch from git defaults or the worktree directory name.
+target/base branch and `sc worktree review-add ...` for in-app comments. Do not
+infer the target branch from git defaults or the worktree directory name. When a
+PR/MR URL is present, the hosting provider review is mandatory and the
+super.engineering comments must never replace it.
 
 ## 1. Determine the mode
 
@@ -294,19 +296,29 @@ the call and name the verdict after a middot —
 while surfacing the decision in the header itself, with no separate banner line
 in the body.
 
-Open the body with the 1-2 sentence explanation of the call. When the verdict
-is ⚠️ Request Changes, add concise feedback bullets beneath it, grouped by the
-specialists whose notes drive the recommendation. Do not add nested feedback
-subsections or a generic must-fix list; the Recommendation should read as one
-section. Each bullet should summarize the specialist note being relied on and
-end with the severity of the finding it maps to, e.g. `(High)`. Omit
-specialists that do not have recommendation-driving notes. For 🚢 Ship It! or
-💬 Comment Only, omit feedback bullets unless there are specific non-blocking
-notes worth preserving.
+Open the body with the 1-2 sentence explanation of the call. After that, add
+one specialist notes subsection for each specialist that has recommendation-
+driving or decision-relevant notes. Omit specialists with no notes. This is
+required for every verdict, including 🚢 Ship It! and 💬 Comment Only when
+there are notes worth preserving.
 
-- 📋 **Requirements Specialist:** The implementation misses a stated acceptance criterion. (High)
-- 🎯 **Correctness Specialist:** Concurrent requests can bypass the limit, which maps to the atomicity finding. (High)
-- 🧪 **Testing Specialist:** Missing concurrency coverage maps to the regression-test gap. (Medium)
+Each subsection is a `#####` heading using the category emoji and specialist
+name, followed by a flat bullet list of that specialist's notes. Each bullet
+should summarize one note and end with the severity of the finding it maps to
+when applicable, e.g. `(High)`. Do not collapse multiple specialists into one
+generic bullet list, and do not add a generic must-fix section.
+
+##### 📋 Requirements Specialist
+
+- The implementation misses a stated acceptance criterion. (High)
+
+##### 🎯 Correctness Specialist
+
+- Concurrent requests can bypass the limit, which maps to the atomicity finding. (High)
+
+##### 🧪 Testing Specialist
+
+- Missing concurrency coverage maps to the regression-test gap. (Medium)
 
 <details>
 <summary>🦦 <strong>Specialist Scores</strong></summary>
@@ -509,23 +521,17 @@ rather than quoting it verbatim.
 
 Delivery follows the mode determined in §1:
 
-- **super.engineering review surface:** when running inside super.engineering
-  and in-app review comments are available, post the final review there with
-  `sc worktree review-add ...` using the `otterbot-review` provider. The
-  coordinator must first post one main Review Council comment whose body is
-  the complete §6 Markdown report exactly as generated. Do not replace this
-  main comment with a summary, a verdict-only note, or only inline findings.
-  After the main Review Council comment succeeds, post each source-specific
-  finding as its own inline code comment on the smallest relevant changed line
-  range. The visible order must be the full Markdown Review Council comment
-  first, then the inline code comments underneath it. If the main comment
-  cannot be posted, state the failure and present the report in the
-  conversation; do not post inline comments alone.
-- **PR review mode:** deliver the main Review Council post on the PR/MR using
-  whatever tool your environment provides for that host (e.g. a
-  hosting-provider CLI or API). Use a formal review when the verdict has a
-  formal review state; use a neutral review comment or plain PR comment for 💬
-  Comment Only. Set the review verdict from the **Recommendation** in §6:
+- **PR review mode:** when a PR/MR URL is present, the hosting provider is the
+  required delivery target. Always post the main Review Council post to the
+  PR/MR using whatever tool your environment provides for that host (e.g. a
+  hosting-provider CLI or API), and always post source-specific findings as
+  inline review comments when the host supports them. Do not treat a console
+  response, local note, super.engineering in-app comment, or other side surface
+  as sufficient delivery for PR mode.
+
+  Use a formal review when the verdict has a formal review state; use a neutral
+  review comment or plain PR comment for 💬 Comment Only. Set the review verdict
+  from the **Recommendation** in §6:
 
   - 🚢 **Ship It!** → submit the review as **approved**.
   - 💬 **Comment Only** → submit a neutral review comment or plain PR comment.
@@ -536,17 +542,28 @@ Delivery follows the mode determined in §1:
   detailed source-specific findings as inline comments on the affected changed
   lines, then reference those inline comments from the main post's Findings
   Overview. If inline comments are unavailable, include the detailed finding
-  cards in the main post instead. Also show the main post and a concise list of
-  inline comments in the conversation so the user doesn't have to leave it to
-  read your feedback. Submitting is the expected, default action for this mode
-  — no need to ask for confirmation first, since providing a PR URL is the
-  user's signal that they want it reviewed there. If the host or your access
-  can't attach a verdict (e.g. the tool only supports plain comments, or you'd
-  be reviewing your own PR where self-approval is disallowed), fall back to
-  posting the main Review Council post as a comment and state the recommendation
-  in the report. If submitting or inline commenting fails entirely (no access,
-  no such tool available, auth error), say so and fall back to presenting the
-  report in the conversation.
+  cards in the main post instead. Submitting is the expected, default action for
+  this mode — no need to ask for confirmation first, since providing a PR URL is
+  the user's signal that they want it reviewed there.
+
+  After posting, verify the host accepted the review/comment and, when possible,
+  that the PR/MR review decision reflects the Recommendation. Then show the
+  review URL, final verdict, and a concise inline-comment summary in the
+  conversation. If the host or your access can't attach a verdict (e.g. the tool
+  only supports plain comments, or you'd be reviewing your own PR where
+  self-approval is disallowed), still post the main Review Council post as a
+  PR/MR comment and state the recommendation in the report. If the PR/MR cannot
+  be posted to at all (no access, no such tool available, auth error), state the
+  posting failure explicitly and ask for access or a pasted diff; do not present
+  the review as complete or as delivered.
+- **super.engineering review surface:** when running inside super.engineering,
+  use in-app review comments only as an additional delivery surface or when
+  there is no PR/MR URL. If you add in-app comments, post the complete Review
+  Council Markdown first with `sc worktree review-add ...` using the
+  `otterbot-review` provider, then post source-specific inline code comments on
+  the smallest relevant changed line range. In PR review mode, these comments
+  are optional extras and must come after, or at least never replace, the
+  hosting-provider review.
 - **Local review mode:** present the report in the conversation only. There
   is no PR to comment on, and nothing should be published anywhere else
   unless the user explicitly asks for that.
@@ -589,10 +606,10 @@ for what a full pass looks like):
       Testing
 - [ ] Requirements are represented by the scored Requirements Specialist card,
       not a standalone section
-- [ ] Any Request Changes recommendation uses concise emoji-prefixed feedback
-      bullets for relevant specialists, omits specialists without
-      recommendation-driving notes, and does not use nested feedback
-      subsections, a generic Notes section, or a must-fix list
+- [ ] The Recommendation section uses one `#####` specialist notes subsection
+      per specialist with decision-relevant notes, each with a flat bullet list;
+      specialists with no notes are omitted, and multiple specialists are never
+      collapsed into one generic bullet list
 - [ ] Source-specific findings are posted as inline comments when the host
       supports inline comments; the collapsible Findings Overview keeps only a
       reduced findings list with one severity section per finding type,
@@ -612,12 +629,14 @@ for what a full pass looks like):
       whenever those details are available
 - [ ] Delivery matches mode: PR mode posts the main Review Council post to the
       PR/MR with the correct verdict semantics, posts inline comments when
-      available, **and** shows the main post plus a concise inline-comment
-      summary in-conversation; local mode shows it in-conversation only
-- [ ] In super.engineering, in-app review delivery posts the complete
-      Review Council Markdown as the first `otterbot-review` comment, then
-      posts source-specific inline code comments underneath it; inline comments
-      are never posted by themselves when the main Markdown comment fails
+      available, verifies the host accepted the review/comment, **and** shows
+      the review URL plus a concise inline-comment summary in-conversation;
+      local mode shows it in-conversation only
+- [ ] In super.engineering, in-app review delivery is never used as a
+      substitute for host delivery when a PR/MR URL is present; when used, it
+      posts the complete Review Council Markdown as the first
+      `otterbot-review` comment, then posts source-specific inline code
+      comments underneath it
 - [ ] PR review verdict matches the final Recommendation: Ship It! → approved;
       Comment Only → neutral review comment or plain PR comment; Request
       Changes → changes requested (§7)
