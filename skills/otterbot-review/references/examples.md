@@ -36,7 +36,10 @@ defeats the ticket's purpose — worth a fix before merge, not a fast-follow.
 - 🎯 **Correctness Specialist:** Concurrent requests can bypass the intended merchant limit, which maps to the atomicity finding. (High)
 - 🧪 **Testing Specialist:** Missing concurrency coverage maps to the regression-test gap for the same failure mode. (Medium)
 
-#### 🦦 Specialist Scores
+<details>
+<summary>🦦 <strong>Specialist Scores</strong></summary>
+
+<br>
 
 > 📋 **Requirements Specialist · 🟡 70**
 >
@@ -74,25 +77,51 @@ defeats the ticket's purpose — worth a fix before merge, not a fast-follow.
 > - No authorization or sensitive-data concerns found in this change.
 > - The limiter does not appear to expose secrets or user data.
 
-#### 🔎 Findings Overview
+</details>
+
+<details>
+<summary>🔎 <strong>Findings Overview</strong></summary>
+
+<br>
 
 - 🟠 **High · 1 Issue:** Non-atomic rate-limit update in `src/webhooks/rateLimiter.ts`; posted inline on `checkRateLimit()`.
 - 🟡 **Medium · 1 Issue:** Redis-down behavior is undefined; posted inline on the rate-limit call site.
 - 🔵 **Low · 1 Issue:** Limit constant should move to shared config; posted inline on the constant declaration.
 
-#### 🧪 Testing
+</details>
 
-> **Existing coverage.**
+<details>
+<summary>🧪 <strong>Testing</strong></summary>
+
+<br>
+
+> **Result · Not run in this review.**
+>
+> - I inspected the tests and changed code but did not execute the suite in this example review.
+> - Confidence: medium; the highest-risk behavior depends on concurrent timing and should be proven with a runtime test.
+
+> **Evidence inspected.**
+>
 > - `rateLimiter.test.ts` covers a single request under the limit and a single request over it.
-> - No coverage for concurrent requests hitting the same merchant key.
+> - The existing assertions prove basic allow/deny behavior, but all calls are sequential.
+
+> **Risk analysis.**
+>
+> - The tests do not exercise the High atomicity finding, so the change could still violate the 50 requests/minute requirement under real webhook traffic.
+> - Redis-down behavior is undefined and untested, which leaves production failure handling to chance.
 
 > **Coverage gaps.**
+>
 > - Concurrency: the race condition in the High finding above has no test guarding it — this is the most important gap to close.
 > - Redis-down behavior: no test simulates a Redis connection failure to verify the handler's response.
 
-> **Recommended manual verification.**
-> - Load-test the endpoint with concurrent requests from a single merchant to confirm the limiter holds once the race is fixed.
-> - Manually break the Redis connection in staging to observe current failure behavior before deciding on a fallback.
+> **Recommended verification.**
+>
+> - Add an automated concurrency test that fires parallel requests for one merchant and expects no more than 50 accepted responses in the window.
+> - Add a Redis-error test that asserts the chosen fallback behavior and logging signal.
+> - Load-test the endpoint in staging after the atomic fix to confirm the limiter holds under realistic request timing.
+
+</details>
 ```
 
 **Inline comments posted:**
@@ -165,7 +194,10 @@ merge on its own; everything else here is minor.
 - 📋 **Requirements Specialist:** A merchant-facing export feature cannot meet the implied data-access requirement without merchant ownership checks. (Critical)
 - 🧩 **Completeness Specialist:** The missing authorization check blocks a complete implementation and supports the same merge gate. (Critical)
 
-#### 🦦 Specialist Scores
+<details>
+<summary>🦦 <strong>Specialist Scores</strong></summary>
+
+<br>
 
 > 📋 **Requirements Specialist · 🟡 65**
 >
@@ -202,7 +234,12 @@ merge on its own; everything else here is minor.
 > - Missing authorization check is a real data-exposure risk.
 > - A merchant could potentially export another merchant's transactions.
 
-#### 🔎 Findings Overview
+</details>
+
+<details>
+<summary>🔎 <strong>Findings Overview</strong></summary>
+
+<br>
 
 🔴 **Critical · 1 Issue**
 
@@ -225,18 +262,40 @@ merge on its own; everything else here is minor.
 > - **Why it matters:** Nothing currently guards against a regression here, and the missing-auth issue above is exactly the kind of thing a test would have caught.
 > - **Fix:** Add a test asserting a user from merchant A gets a 403 when requesting merchant B's export.
 
-#### 🧪 Testing
+</details>
 
-> **Existing coverage.**
+<details>
+<summary>🧪 <strong>Testing</strong></summary>
+
+<br>
+
+> **Result · Not run in this review.**
+>
+> - I inspected the diff and nearby tests but did not execute the route test suite.
+> - Confidence: low-to-medium until an authorization regression test covers the Critical finding.
+
+> **Evidence inspected.**
+>
 > - No automated tests exist for the new export endpoint (`exportController.ts` is untracked with no accompanying test file).
 > - Existing CSV-format tests elsewhere in the repo (e.g. `transactionsController.test.ts`) don't cover this new route.
 
+> **Risk analysis.**
+>
+> - The missing ownership check is a security boundary, so this needs a targeted negative test before merge rather than only manual spot-checking.
+> - CSV formatting has some adjacent coverage, but the new route's access control and input handling are untested.
+
 > **Coverage gaps.**
+>
 > - Authorization: no test exercises the missing ownership check from the Critical finding above — a test here would have caught it directly.
 > - Edge cases: no test for a merchant with zero transactions or an invalid `:id`.
 
-> **Recommended manual verification.**
+> **Recommended verification.**
+>
+> - Add a route test asserting a user from merchant A gets a 403 when requesting merchant B's export.
+> - Add a positive same-merchant test so the ownership fix does not break valid exports.
 > - Manually hit the endpoint as a user from merchant A requesting merchant B's `:id` to confirm the fix actually blocks it before merge.
+
+</details>
 ```
 
 Note how the missing-untracked-file bug this skill was fixed for shows up

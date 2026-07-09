@@ -1,7 +1,7 @@
 ---
 name: otterbot-review
 description: Perform a principal-level code review, producing a structured Review Council post with Specialist Scores and inline source-specific findings. Given a pull/merge request URL, reviews that PR and delivers the report with the correct verdict semantics — approving when the recommendation is Ship It!, commenting neutrally when it is Comment Only, and requesting changes otherwise. Given no URL, reviews the current local code changes and presents the report in the conversation. Use this whenever the user asks to "review this PR", "review my diff", "analyze this code change", "do a code review", "check this pull request for issues", pastes a pull-request URL and asks for feedback, or wants a merge-readiness assessment. Works with any git hosting provider (GitHub, GitLab, Bitbucket, etc.).
-version: 1.9.0
+version: 1.10.0
 ---
 
 # Otterbot Review
@@ -268,11 +268,12 @@ main Review Council post.
 ## 6. Output format
 
 Produce the report in exactly this structure. Keep it clean and scannable:
-plain `####` section headings and compact blockquote cards. Use a
-top-level heading (`##`) for the title so its underline rule visually
+plain `####` section headings for Summary and Recommendation, then collapsible
+`<details>` sections for Specialist Scores, Findings Overview, and Testing.
+Use a top-level heading (`##`) for the title so its underline rule visually
 separates it from the rest of the report. Do **not** add horizontal rules
-anywhere else; the section headings and blockquote cards already create enough
-visual separation on their own.
+anywhere else; the section headings, details summaries, and blockquote cards
+already create enough visual separation on their own.
 
 ```markdown
 ## 🦦 Otter Review Council
@@ -307,7 +308,10 @@ notes worth preserving.
 - 🎯 **Correctness Specialist:** Concurrent requests can bypass the limit, which maps to the atomicity finding. (High)
 - 🧪 **Testing Specialist:** Missing concurrency coverage maps to the regression-test gap. (Medium)
 
-#### 🦦 Specialist Scores
+<details>
+<summary>🦦 <strong>Specialist Scores</strong></summary>
+
+<br>
 
 Score each category from 0-100, where 100 means excellent and merge-ready
 with no meaningful concerns.
@@ -384,7 +388,12 @@ Specialist Scores cards:
 
 Do not add a separate **Score Notes** section or an overall score.
 
-#### 🔎 Findings Overview
+</details>
+
+<details>
+<summary>🔎 <strong>Findings Overview</strong></summary>
+
+<br>
 
 Give a reduced overview of findings in the main post, grouped by severity,
 most severe first. Use the exact emoji and labels from §4 (🔴 Critical,
@@ -402,39 +411,67 @@ finding card here using the Inline finding comment format below.
 - 🟡 **Medium · 1 Issue:** Redis-down behavior is undefined; posted inline on the rate-limit call site.
 - 🔵 **Low · 1 Issue:** Limit constant should move to shared config; posted inline on the constant declaration.
 
-#### 🧪 Testing
+</details>
 
-Give a thorough, specific picture of testing — not a one-line note. Cover,
-as applicable:
+<details>
+<summary>🧪 <strong>Testing</strong></summary>
 
-- **Existing coverage:** which tests exist (unit, integration, e2e, manual
-  QA) and exactly what they exercise — file/test names when you have them.
-- **Coverage gaps:** concrete scenarios that aren't covered — edge cases,
-  error paths, concurrency, migrations, rollback, permission boundaries —
-  especially any gap that relates directly to a finding above.
-- **Recommended manual verification:** specific steps worth running by
-  hand before or after merge when automated coverage doesn't fully address
-  the risk (e.g. load-testing a race condition, exercising a failure mode
-  that's hard to simulate in CI).
+<br>
 
-Use blockquote cards matching the Findings style: a bold one-line point,
-then a tight bullet list of specifics underneath when there's more to say.
+Give a thorough, specific picture of testing and verification — not a one-line
+note. Because this section is collapsible, optimize it for usefulness over
+brevity while staying factual. Cover, as applicable:
+
+- **Execution results:** exact automated or manual checks run, their outcome
+  (passed, failed, skipped, not run), and the important output or failure
+  signal. If no tests were run, say why and distinguish that from tests you
+  merely inspected.
+- **Evidence inspected:** existing unit, integration, e2e, contract,
+  migration, fixture, or manual-QA coverage, with file/test names when you
+  have them and exactly what behavior they exercise.
+- **Coverage analysis:** how well the observed evidence maps to the change's
+  risk profile and to each blocking or non-blocking finding above.
+- **Coverage gaps:** concrete scenarios that are not covered — edge cases,
+  error paths, concurrency, migrations, rollback, permission boundaries,
+  performance, accessibility, observability, or security boundaries.
+- **Recommended verification:** specific automated tests, commands, or manual
+  checks worth running before or after merge, including expected results and
+  priority when multiple checks are suggested.
+
+Use rich blockquote cards matching the Findings style. Start each card with a
+bold one-line point and include tight bullets of specifics underneath. Prefer
+these cards when the evidence supports them: **Result**, **Evidence inspected**,
+**Risk analysis**, **Coverage gaps**, and **Recommended verification**. Add a
+short **Confidence** line inside the Result or Risk analysis card when useful.
 Blank line between cards, no horizontal rules.
 
-> **Existing coverage.**
+> **Result · Not run in this review.**
+>
+> - I inspected `rateLimiter.test.ts` but did not execute the suite in this environment.
+> - Confidence: medium; the code path is small, but the highest-risk behavior is concurrency-sensitive and needs runtime proof.
+
+> **Evidence inspected.**
 >
 > - `rateLimiter.test.ts` covers a single request under the limit and a single request over it.
-> - No coverage for concurrent requests hitting the same merchant key.
+> - The tests assert the basic allow/deny behavior, but they use sequential calls only.
+
+> **Risk analysis.**
+>
+> - The existing tests do not exercise the High atomicity finding, so the most important failure mode could still ship unnoticed.
+> - Redis-down behavior is operationally significant because webhook handling depends on this path under production traffic.
 
 > **Coverage gaps.**
 >
-> - Concurrency: the race condition in the High finding above has no test guarding it.
-> - Redis-down behavior: no test simulates a Redis connection failure to verify the handler's response.
+> - Concurrency: no test sends simultaneous requests for the same merchant key to prove the limiter is atomic.
+> - Failure mode: no test simulates a Redis connection failure to document whether the handler should fail open, fail closed, or surface a retryable error.
 
-> **Recommended manual verification.**
+> **Recommended verification.**
 >
-> - Load-test the endpoint with concurrent requests from a single merchant to confirm the limiter holds once the race is fixed.
-> - Manually break the Redis connection in staging to observe current failure behavior before deciding on a fallback.
+> - Add an automated concurrency test that fires parallel requests for one merchant and expects no more than 50 accepted responses in the window.
+> - Add a Redis-error test that asserts the chosen fallback behavior and logging signal.
+> - Load-test the endpoint in staging after the atomic fix to confirm the limiter holds under realistic request timing.
+
+</details>
 ```
 
 ### Inline finding comment format
@@ -542,8 +579,9 @@ for what a full pass looks like):
 - [ ] No findings invented just to fill an empty severity bucket
 - [ ] Output follows the exact §6 structure, with `#### 📝 Summary` above the
       opening paragraph, a `#### <emoji> Recommendation · <verdict>` heading
-      immediately below the Summary, no horizontal rules, and compact
-      `####` sections throughout the main post
+      immediately below the Summary, no horizontal rules, and collapsible
+      `<details>` sections for Specialist Scores, Findings Overview, and
+      Testing
 - [ ] Requirements are represented by the scored Requirements Specialist card,
       not a standalone section
 - [ ] Any Request Changes recommendation uses concise emoji-prefixed feedback
@@ -551,18 +589,22 @@ for what a full pass looks like):
       recommendation-driving notes, and does not use nested feedback
       subsections, a generic Notes section, or a must-fix list
 - [ ] Source-specific findings are posted as inline comments when the host
-      supports inline comments; the main post keeps only a reduced Findings
-      Overview that groups findings by severity and points to inline locations
+      supports inline comments; the collapsible Findings Overview keeps only a
+      reduced findings list that groups findings by severity and points to
+      inline locations
 - [ ] Findings without precise line locations, or findings in environments
       without inline comment support, use the full finding card format in the
       main post
-- [ ] Specialist Scores cards are plain blockquotes with no GitHub alert
-      labels, include exactly one card for each of the seven categories, include
-      category emojis in the heading, omit the redundant Specialist field, put the
-      score indicator and value beside the specialist name, omit `/ 100`, put
-      note bullets directly below the heading without a Notes label, and do not
-      include a standalone Score line, separate Score Notes section, or overall
-      score
+- [ ] Specialist Scores is collapsible and its cards are plain blockquotes
+      with no GitHub alert labels, include exactly one card for each of the
+      seven categories, include category emojis in the heading, omit the
+      redundant Specialist field, put the score indicator and value beside the
+      specialist name, omit `/ 100`, put note bullets directly below the heading
+      without a Notes label, and do not include a standalone Score line,
+      separate Score Notes section, or overall score
+- [ ] Testing is collapsible and uses rich cards for results, inspected
+      evidence, risk analysis, coverage gaps, and recommended verification
+      whenever those details are available
 - [ ] Delivery matches mode: PR mode posts the main Review Council post to the
       PR/MR with the correct verdict semantics, posts inline comments when
       available, **and** shows the main post plus a concise inline-comment
