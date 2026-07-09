@@ -30,59 +30,77 @@ Ticket PAY-881 asks for "no more than 50 requests/minute per merchant." The
 implementation matches that at the code level, but see the High finding
 below — under load, the actual enforced rate can exceed the limit.
 
-### 🦦 The Otter Council
-
-> [!WARNING]
-> ✅ **Correctness Specialist**
->
-> - **Specialist:** Correctness Specialist
-> - **Score:** 65 / 100
-> - **Notes:** Rate limiter has a race condition under concurrent requests.
-
-> [!TIP]
-> 🧩 **Completeness Specialist**
->
-> - **Specialist:** Completeness Specialist
-> - **Score:** 85 / 100
-> - **Notes:** Covers the main path; no handling for the limiter's Redis dependency being unavailable.
-
-> [!WARNING]
-> 🛡️ **Regression Risk Specialist**
->
-> - **Specialist:** Regression Risk Specialist
-> - **Score:** 80 / 100
-> - **Notes:** Limited blast radius, but Redis dependency behavior needs a decision before merge.
-
-> [!TIP]
-> 🧹 **Code Quality Specialist**
->
-> - **Specialist:** Code Quality Specialist
-> - **Score:** 90 / 100
-> - **Notes:** Implementation is readable and follows local structure.
-
-> [!WARNING]
-> 🧪 **Testing Specialist**
->
-> - **Specialist:** Testing Specialist
-> - **Score:** 60 / 100
-> - **Notes:** Unit tests cover the happy path only; no concurrency or Redis-down test.
-
-> [!TIP]
-> 🔒 **Security Specialist**
->
-> - **Specialist:** Security Specialist
-> - **Score:** 95 / 100
-> - **Notes:** No authorization or sensitive-data concerns found in this change.
-
 ### ⚠️ Recommendation · Request Changes
 
 The race condition means the rate limit isn't reliably enforced, which
 defeats the ticket's purpose — worth a fix before merge, not a fast-follow.
 
-**Blocking**
+**Notes**
 
-- Make the read-check-increment in `checkRateLimit()` atomic so concurrent requests can't all pass the limit. (High)
-- Add a Redis-down fallback so a connection blip doesn't 500 all webhook traffic. (Medium)
+#### Correctness Specialist
+
+- Concurrent requests can bypass the intended merchant limit, which maps to the atomicity finding. (High)
+
+#### Testing Specialist
+
+- Missing concurrency coverage maps to the regression-test gap for the same failure mode. (Medium)
+
+### 🦦 The Otter Council
+
+> 🟡 **Correctness Specialist**
+>
+> **Score ·** 65
+>
+> **Notes**
+>
+> - Rate limiter has a race condition under concurrent requests.
+> - The issue directly affects the core requirement because concurrent traffic can exceed the intended merchant limit.
+
+> 🟢 **Completeness Specialist**
+>
+> **Score ·** 85
+>
+> **Notes**
+>
+> - Covers the main rate-limiting path.
+> - Redis-unavailable behavior is not defined, so the operational failure mode still needs a decision.
+
+> 🟡 **Regression Risk Specialist**
+>
+> **Score ·** 80
+>
+> **Notes**
+>
+> - Limited blast radius because the change is scoped to webhook rate limiting.
+> - Redis dependency behavior should be resolved before merge to avoid surprising webhook failures.
+
+> 🟢 **Code Quality Specialist**
+>
+> **Score ·** 90
+>
+> **Notes**
+>
+> - Implementation is readable and follows local structure.
+> - The remaining concerns are behavioral rather than structural.
+
+> 🟡 **Testing Specialist**
+>
+> **Score ·** 60
+>
+> **Notes**
+>
+> - Unit tests cover the happy path only.
+> - No concurrency test exercises the race condition.
+> - No Redis-down test documents the intended fallback behavior.
+
+> 🟢 **Security Specialist**
+>
+> **Score ·** 95
+>
+> **Notes**
+>
+> - No authorization or sensitive-data concerns found in this change.
+> - The limiter does not appear to expose secrets or user data.
 
 ### 🔎 Findings
 
@@ -171,58 +189,76 @@ this appears to implement a merchant-facing "export transactions" feature.
 Can't confirm acceptance criteria without a ticket — worth double-checking
 against whatever spec exists before merging.
 
-### 🦦 The Otter Council
-
-> [!TIP]
-> ✅ **Correctness Specialist**
->
-> - **Specialist:** Correctness Specialist
-> - **Score:** 90 / 100
-> - **Notes:** Export logic is straightforward and appears to return the intended data.
-
-> [!WARNING]
-> 🧩 **Completeness Specialist**
->
-> - **Specialist:** Completeness Specialist
-> - **Score:** 70 / 100
-> - **Notes:** Missing authorization check blocks a complete implementation.
-
-> [!TIP]
-> 🛡️ **Regression Risk Specialist**
->
-> - **Specialist:** Regression Risk Specialist
-> - **Score:** 90 / 100
-> - **Notes:** New endpoint is isolated, but the security flaw affects exposed data.
-
-> [!TIP]
-> 🧹 **Code Quality Specialist**
->
-> - **Specialist:** Code Quality Specialist
-> - **Score:** 85 / 100
-> - **Notes:** Code is simple and follows the surrounding handler style.
-
-> [!CAUTION]
-> 🧪 **Testing Specialist**
->
-> - **Specialist:** Testing Specialist
-> - **Score:** 50 / 100
-> - **Notes:** No tests added for the new endpoint (new file, untracked).
-
-> [!CAUTION]
-> 🔒 **Security Specialist**
->
-> - **Specialist:** Security Specialist
-> - **Score:** 40 / 100
-> - **Notes:** Missing authorization check is a real data-exposure risk.
-
 ### ⚠️ Recommendation · Request Changes
 
 The missing authorization check is a data-exposure issue and should block
 merge on its own; everything else here is minor.
 
-**Blocking**
+**Notes**
 
-- Add a merchant-ownership check to `GET /merchants/:id/export` before generating the export. (Critical)
+#### Security Specialist
+
+- Merchants could potentially export another merchant's transactions, which maps directly to the Critical data-exposure finding. (Critical)
+
+#### Completeness Specialist
+
+- The missing authorization check blocks a complete implementation and supports the same merge gate. (Critical)
+
+### 🦦 The Otter Council
+
+> 🟢 **Correctness Specialist**
+>
+> **Score ·** 90
+>
+> **Notes**
+>
+> - Export logic is straightforward and appears to return the intended data.
+> - No obvious data-shaping or pagination bug is visible from the changed code.
+
+> 🟡 **Completeness Specialist**
+>
+> **Score ·** 70
+>
+> **Notes**
+>
+> - Missing authorization check blocks a complete implementation.
+> - Acceptance criteria are unclear without a linked ticket or spec.
+
+> 🟢 **Regression Risk Specialist**
+>
+> **Score ·** 90
+>
+> **Notes**
+>
+> - New endpoint is isolated from existing flows.
+> - The security flaw affects exposed data even though it is not a broad regression.
+
+> 🟢 **Code Quality Specialist**
+>
+> **Score ·** 85
+>
+> **Notes**
+>
+> - Code is simple and follows the surrounding handler style.
+> - The implementation would benefit from colocated authorization handling matching adjacent endpoints.
+
+> 🔴 **Testing Specialist**
+>
+> **Score ·** 50
+>
+> **Notes**
+>
+> - No tests added for the new endpoint.
+> - No authorization regression test exists for cross-merchant access.
+
+> 🔴 **Security Specialist**
+>
+> **Score ·** 40
+>
+> **Notes**
+>
+> - Missing authorization check is a real data-exposure risk.
+> - A merchant could potentially export another merchant's transactions.
 
 ### 🔎 Findings
 

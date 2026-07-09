@@ -1,7 +1,7 @@
 ---
 name: otterbot-review
 description: Perform a principal-level code review, producing a structured Markdown report with severity-tagged findings and a scorecard. Given a pull/merge request URL, reviews that PR and submits the report as a formal review — approving it when the recommendation is Approve or Comment Only, requesting changes otherwise. Given no URL, reviews the current local code changes and presents the report in the conversation. Use this whenever the user asks to "review this PR", "review my diff", "analyze this code change", "do a code review", "check this pull request for issues", pastes a pull-request URL and asks for feedback, or wants a merge-readiness assessment. Works with any git hosting provider (GitHub, GitLab, Bitbucket, etc.).
-version: 1.7.0
+version: 1.7.5
 ---
 
 # Otterbot Review
@@ -119,7 +119,8 @@ merge readiness. Ask each specialist to return:
 - Category score from 0-100 with a concise rationale.
 - Candidate findings with severity, issue, location, why it matters,
   recommended fix, and evidence.
-- Blocking/non-blocking recommendation for that category.
+- Merge-readiness recommendation for that category, with the specialist notes
+  that support it.
 - Confidence level and the facts or assumptions the confidence depends on.
 - Missing context that would materially change the conclusion.
 
@@ -220,9 +221,9 @@ plain section headings and each finding in its own callout card. Use a
 top-level heading (`##`) for the title so its underline rule visually
 separates it from the rest of the report. Do **not** add horizontal rules
 anywhere else — not between top-level sections (Summary, Requirements,
-The Otter Council, Recommendation, Findings, Testing) and not between individual finding cards
-within Findings — the section headings and the blockquote cards already
-create enough visual separation on their own.
+Recommendation, The Otter Council, Findings, Testing) and not between
+individual finding cards within Findings — the section headings and the
+blockquote cards already create enough visual separation on their own.
 
 ```markdown
 ## 🦦 OtterBot · Code Review
@@ -236,54 +237,6 @@ the Summary sets up the narrative, not the decision.
 State whether the change appears to satisfy the intended business/product
 requirements. Note any ambiguity or missing acceptance criteria.
 
-### 🦦 The Otter Council
-
-Score each category from 0-100, where 100 means excellent and merge-ready
-with no meaningful concerns.
-
-Present each scorecard item as a blockquote card, not a table. Include exactly
-three fields in every card:
-
-- **Specialist:** the previous scorecard category name with `Specialist`
-  appended.
-- **Score:** the specialist's score as `N / 100`.
-- **Notes:** the specialist's concise rationale, replacing the old separate
-  **Score Notes** section.
-
-Use GitHub alert blockquotes to create a visible left border by score band:
-
-- `< 60` → `> [!CAUTION]` (red border)
-- `60-80` → `> [!WARNING]` (yellow border)
-- `> 80` → `> [!TIP]` (green border)
-
-Use a category-specific emoji beside the specialist name, e.g.
-`✅ Correctness Specialist`, `🧩 Completeness Specialist`,
-`🛡️ Regression Risk Specialist`, `🧹 Code Quality Specialist`,
-`🧪 Testing Specialist`, and `🔒 Security Specialist`.
-
-> [!TIP]
-> ✅ **Correctness Specialist**
->
-> - **Specialist:** Correctness Specialist
-> - **Score:** 0-100 / 100
-> - **Notes:** Brief rationale.
-
-> [!WARNING]
-> 🧪 **Testing Specialist**
->
-> - **Specialist:** Testing Specialist
-> - **Score:** 0-100 / 100
-> - **Notes:** Brief rationale.
-
-> [!CAUTION]
-> 🔒 **Security Specialist**
->
-> - **Specialist:** Security Specialist
-> - **Score:** 0-100 / 100
-> - **Notes:** Brief rationale.
-
-Do not add a separate **Score Notes** section or an overall score.
-
 ### ⚠️ Recommendation · Request Changes
 
 The verdict lives in the heading itself: set the emoji dynamically to match
@@ -293,19 +246,89 @@ Only`. This keeps the section identifiable while surfacing the decision in the
 header's own underline rule, with no separate banner line in the body.
 
 Open the body with the 1-2 sentence explanation of the call. When the verdict
-is ⚠️ Request Changes, follow with a **Blocking** label and a bullet list of
-the specific must-fix items that gate merge — each a one-liner that ends with
-the severity of the finding it maps to, e.g. `(High)`, rather than restating
-the whole finding. For ✅ Approve or 💬 Comment Only, omit **Blocking**;
-optionally add a **Follow-ups** label with non-blocking suggestions worth
-doing later.
+is ⚠️ Request Changes, follow with a **Notes** label. Under it, create one
+`#### <Specialist Name>` subsection per Otter Council specialist whose notes
+drive the recommendation, with a bullet list beneath that specialist. Each
+bullet should summarize the specialist note being relied on and end with the
+severity of the finding it maps to, e.g. `(High)`. Omit specialists that do not
+have recommendation-driving notes. Do not use a generic must-fix list.
+For ✅ Approve or 💬 Comment Only, omit that label; optionally add a
+**Follow-ups** label with non-blocking suggestions worth doing later, tied to
+specialist notes when useful.
 
 Explain the recommendation in 1-2 concise sentences.
 
-**Blocking**
+**Notes**
 
-- Concrete must-fix item that gates merge. (High)
-- Another must-fix item. (Medium)
+#### Correctness Specialist
+
+- Concurrent requests can bypass the limit, which maps to the atomicity finding. (High)
+
+#### Testing Specialist
+
+- Missing concurrency coverage maps to the regression-test gap. (Medium)
+
+### 🦦 The Otter Council
+
+Score each category from 0-100, where 100 means excellent and merge-ready
+with no meaningful concerns.
+
+Present each scorecard item as a plain blockquote card, not a table and not a
+GitHub alert. GitHub alert blockquotes add a visible `Tip`, `Warning`, or
+`Caution` label above the content; do not use them here.
+
+- Start each card with a score-status circle and specialist name.
+- Put `**Score ·** <value>` on its own line, not in a bullet list. Do not add
+  `/ 100`; the score is always assumed to be out of 100.
+- Put **Notes** on its own line, followed by one or more bullets describing
+  the specialist's detailed findings. The note bullets replace the old
+  separate **Score Notes** section.
+
+Plain Markdown cannot reliably control blockquote border color across hosts.
+Use a normal blockquote for every score band rather than trying to force red,
+yellow, or green borders.
+
+Use a score-status circle beside the specialist name:
+
+- `< 60` → `🔴`
+- `60-80` → `🟡`
+- `81-99` → `🟢`
+- `100` → `🔵`
+
+> 🟢 **Correctness Specialist**
+>
+> **Score ·** 81-99
+>
+> **Notes**
+>
+> - Detailed finding or rationale.
+> - Another relevant observation, when needed.
+
+> 🟡 **Testing Specialist**
+>
+> **Score ·** 60-80
+>
+> **Notes**
+>
+> - Detailed finding or rationale.
+
+> 🔴 **Security Specialist**
+>
+> **Score ·** <60
+>
+> **Notes**
+>
+> - Detailed finding or rationale.
+
+> 🔵 **Code Quality Specialist**
+>
+> **Score ·** 100
+>
+> **Notes**
+>
+> - Detailed finding or rationale.
+
+Do not add a separate **Score Notes** section or an overall score.
 
 ### 🔎 Findings
 
@@ -444,9 +467,14 @@ for what a full pass looks like):
 - [ ] Output follows the exact §6 structure, with empty severity sections
       omitted, no horizontal rules, and each severity heading tagged with its
       finding count
-- [ ] The Otter Council cards include Specialist, Score, and Notes; use the
-      correct score-band alert border; and do not include a separate Score
-      Notes section or overall score
+- [ ] Recommendation appears before The Otter Council, and any Request Changes
+      recommendation uses a Notes section with one subsection per relevant
+      specialist, omits specialists without recommendation-driving notes, and
+      does not use a generic must-fix list
+- [ ] The Otter Council cards are plain blockquotes with no GitHub alert
+      labels, omit the redundant Specialist field, put `Score · <value>` and
+      Notes outside bullet lists, omit `/ 100`, and do not include a separate
+      Score Notes section or overall score
 - [ ] Delivery matches mode: PR mode submits a formal review **and** shows
       the report in-conversation; local mode shows it in-conversation only
 - [ ] PR review verdict matches the final Recommendation: Approve or
