@@ -84,9 +84,17 @@ defeats the ticket's purpose — worth a fix before merge, not a fast-follow.
 
 <br>
 
-- 🟠 **High · 1 Issue:** Non-atomic rate-limit update in `src/webhooks/rateLimiter.ts`; posted inline on `checkRateLimit()`.
-- 🟡 **Medium · 1 Issue:** Redis-down behavior is undefined; posted inline on the rate-limit call site.
-- 🔵 **Low · 1 Issue:** Limit constant should move to shared config; posted inline on the constant declaration.
+🟠 **High - 1 Issue**
+
+> - Non-atomic rate-limit update in `src/webhooks/rateLimiter.ts`; posted inline on `checkRateLimit()`.
+
+🟡 **Medium - 1 Issue**
+
+> - Redis-down behavior is undefined; posted inline on the rate-limit call site.
+
+🔵 **Low - 1 Issue**
+
+> - Limit constant should move to shared config; posted inline on the constant declaration.
 
 </details>
 
@@ -134,13 +142,6 @@ defeats the ticket's purpose — worth a fix before merge, not a fast-follow.
 > - **Severity:** 🟠 High
 > - **Why it matters:** Under real traffic (the exact scenario this change exists to handle), the limiter can be bypassed, silently defeating the ticket's requirement.
 > - **Fix:** Use an atomic Redis operation (`INCR` + `EXPIRE`, or a Lua script) instead of separate GET/SET calls.
->
-> ```ts
-> const count = Number(await redis.get(key)) || 0;
-> if (count >= LIMIT) return false;
-> await redis.set(key, count + 1, 'EX', 60); // gap between get and set
-> return true;
-> ```
 ```
 
 `src/webhooks/rateLimiter.ts`, rate-limit call site:
@@ -241,7 +242,7 @@ merge on its own; everything else here is minor.
 
 <br>
 
-🔴 **Critical · 1 Issue**
+🔴 **Critical - 1 Issue**
 
 > **`GET /merchants/:id/export` doesn't verify the requesting user has access to `:id` — it only checks that the user is authenticated, not that they belong to that merchant.**
 > - **Location:** `src/routes/exportController.ts` (new file, untracked)
@@ -255,7 +256,7 @@ merge on its own; everything else here is minor.
 > });
 > ```
 
-🔵 **Low · 1 Issue**
+🔵 **Low - 1 Issue**
 
 > **No tests for the new endpoint.** (No code block — there's nothing to quote for a missing test.)
 > - **Location:** `src/routes/exportController.ts` (new file, untracked)

@@ -1,7 +1,7 @@
 ---
 name: otterbot-review
 description: Perform a principal-level code review, producing a structured Review Council post with Specialist Scores and inline source-specific findings. Given a pull/merge request URL, reviews that PR and delivers the report with the correct verdict semantics — approving when the recommendation is Ship It!, commenting neutrally when it is Comment Only, and requesting changes otherwise. Given no URL, reviews the current local code changes and presents the report in the conversation. Use this whenever the user asks to "review this PR", "review my diff", "analyze this code change", "do a code review", "check this pull request for issues", pastes a pull-request URL and asks for feedback, or wants a merge-readiness assessment. Works with any git hosting provider (GitHub, GitLab, Bitbucket, etc.).
-version: 1.10.0
+version: 1.11.0
 ---
 
 # Otterbot Review
@@ -395,21 +395,32 @@ Do not add a separate **Score Notes** section or an overall score.
 
 <br>
 
-Give a reduced overview of findings in the main post, grouped by severity,
-most severe first. Use the exact emoji and labels from §4 (🔴 Critical,
-🟠 High, 🟡 Medium, 🔵 Low, ⚪ Optional) followed by a middot and the count of
-findings in that severity, e.g. `🟠 High · 2 Issues`. Use singular "Issue" for
-a count of exactly one. Omit empty severities unless there are no findings at
-all.
+Give a reduced overview of findings in the main post, grouped into one section
+per severity, most severe first. Use the exact emoji and labels from §4
+(🔴 Critical, 🟠 High, 🟡 Medium, 🔵 Low, ⚪ Optional) followed by a hyphen and the
+count of findings in that severity, e.g. `🟠 **High - 2 Issues**`. Use singular
+"Issue" for a count of exactly one. Omit empty severities unless there are no
+findings at all.
 
 When detailed findings were posted inline, summarize each one in a single
-bullet and point to the inline comment's location. When inline comments are not
-available, or when a finding has no precise line to attach to, include the full
-finding card here using the Inline finding comment format below.
+blockquote bullet under its severity heading and point to the inline comment's
+location. When inline comments are not available, or when a finding has no
+precise line to attach to, include the full finding card as a blockquote under
+its severity heading using the finding fields in §5. Full finding cards in the
+main post may include a short code block when it clarifies the issue and is safe
+to quote; inline finding comments must not.
 
-- 🟠 **High · 1 Issue:** Atomicity issue in `src/webhooks/rateLimiter.ts`; posted inline on `checkRateLimit()`.
-- 🟡 **Medium · 1 Issue:** Redis-down behavior is undefined; posted inline on the rate-limit call site.
-- 🔵 **Low · 1 Issue:** Limit constant should move to shared config; posted inline on the constant declaration.
+🟠 **High - 1 Issue**
+
+> - Atomicity issue in `src/webhooks/rateLimiter.ts`; posted inline on `checkRateLimit()`.
+
+🟡 **Medium - 1 Issue**
+
+> - Redis-down behavior is undefined; posted inline on the rate-limit call site.
+
+🔵 **Low - 1 Issue**
+
+> - Limit constant should move to shared config; posted inline on the constant declaration.
 
 </details>
 
@@ -487,18 +498,12 @@ reconciliation.
 > - **Severity:** 🟠 High
 > - **Why it matters:** The user, system, data, security, or maintenance impact.
 > - **Fix:** The concrete change needed.
->
-> ```ts
-> // the exact lines from the change that the finding refers to
-> const count = await redis.get(key);
-> if (Number(count) >= LIMIT) await redis.set(key, Number(count) + 1);
-> ```
 ```
 
-Omit the code block when there's nothing useful or safe to show, such as a
-finding about missing code, absent tests, a design-level concern, or changed
-lines containing a secret, credential, private ticket text, customer data, or
-sensitive payload. Redact sensitive content rather than quoting it verbatim.
+Do not include a code block in inline finding comments. The inline comment is
+already attached to the relevant changed lines, so repeating those lines under
+**Fix** is usually duplicative rather than useful. Redact sensitive content
+rather than quoting it verbatim.
 
 ## 7. Delivering the review
 
@@ -590,8 +595,8 @@ for what a full pass looks like):
       subsections, a generic Notes section, or a must-fix list
 - [ ] Source-specific findings are posted as inline comments when the host
       supports inline comments; the collapsible Findings Overview keeps only a
-      reduced findings list that groups findings by severity and points to
-      inline locations
+      reduced findings list with one severity section per finding type,
+      blockquote bullets underneath, and pointers to inline locations
 - [ ] Findings without precise line locations, or findings in environments
       without inline comment support, use the full finding card format in the
       main post
