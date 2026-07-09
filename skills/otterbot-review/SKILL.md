@@ -1,7 +1,7 @@
 ---
 name: otterbot-review
 description: Perform a principal-level code review, producing a structured Markdown report with severity-tagged findings and a scorecard. Given a pull/merge request URL, reviews that PR and submits the report as a formal review — approving it when the recommendation is Approve or Comment Only, requesting changes otherwise. Given no URL, reviews the current local code changes and presents the report in the conversation. Use this whenever the user asks to "review this PR", "review my diff", "analyze this code change", "do a code review", "check this pull request for issues", pastes a pull-request URL and asks for feedback, or wants a merge-readiness assessment. Works with any git hosting provider (GitHub, GitLab, Bitbucket, etc.).
-version: 1.7.7
+version: 1.7.8
 ---
 
 # Otterbot Review
@@ -279,7 +279,7 @@ Explain the recommendation in 1-2 concise sentences.
 - Missing concurrency coverage maps to the regression-test gap. (Medium)
 
 <details>
-<summary>🦦 The Otter Council</summary>
+<summary><h3>🦦 The Otter Council</h3></summary>
 
 Score each category from 0-100, where 100 means excellent and merge-ready
 with no meaningful concerns.
@@ -292,11 +292,11 @@ GitHub alert. GitHub alert blockquotes add a visible `Tip`, `Warning`, or
   specialist name.
 - Put `**Score ·** <value>` on its own line, not in a bullet list. Do not add
   `/ 100`; the score is always assumed to be out of 100.
-- Put **Notes** on its own line, followed by one or more bullets describing
-  the specialist's detailed findings. The note bullets replace the old
-  separate **Score Notes** section.
-- Keep cards compact: do not insert blank spacer lines between the specialist
-  name, score, **Notes** label, and note bullets.
+- Put one or more note bullets directly below the score. Do not add a
+  **Notes** label in Otter Council cards; the bullets replace the old separate
+  **Score Notes** section.
+- Keep cards readable: include blank blockquote spacer lines between the
+  specialist name, score, and note bullets.
 
 Plain Markdown cannot reliably control blockquote border color across hosts.
 Use a normal blockquote for every score band rather than trying to force red,
@@ -320,24 +320,28 @@ Otter Council cards:
 - Security → `🔒`
 
 > 🟢 · ✅ **Correctness Specialist**
+>
 > **Score ·** 81-99
-> **Notes**
+>
 > - Detailed finding or rationale.
 > - Another relevant observation, when needed.
 
 > 🟡 · 🧪 **Testing Specialist**
+>
 > **Score ·** 60-80
-> **Notes**
+>
 > - Detailed finding or rationale.
 
 > 🔴 · 🔒 **Security Specialist**
+>
 > **Score ·** <60
-> **Notes**
+>
 > - Detailed finding or rationale.
 
 > 🔵 · 🧹 **Code Quality Specialist**
+>
 > **Score ·** 100
-> **Notes**
+>
 > - Detailed finding or rationale.
 
 Do not add a separate **Score Notes** section or an overall score.
@@ -345,7 +349,7 @@ Do not add a separate **Score Notes** section or an overall score.
 </details>
 
 <details>
-<summary>🔎 Findings</summary>
+<summary><h3>🔎 Findings</h3></summary>
 
 Group findings by severity, most severe first. Severity headings use the
 exact emoji and labels from §4 (🔴 Critical, 🟠 High, 🟡 Medium, 🔵 Low,
@@ -395,7 +399,7 @@ consecutive cards so they render as separate callouts — no horizontal rules:
 </details>
 
 <details>
-<summary>🧪 Testing</summary>
+<summary><h3>🧪 Testing</h3></summary>
 
 Give a thorough, specific picture of testing — not a one-line note. Cover,
 as applicable:
@@ -497,11 +501,14 @@ for what a full pass looks like):
       must-fix list
 - [ ] The Otter Council cards are plain blockquotes with no GitHub alert
       labels, include score-status and category emojis in the heading, omit the
-      redundant Specialist field, put `Score · <value>` and Notes outside
-      bullet lists, omit `/ 100`, use compact spacing, and do not include a
-      separate Score Notes section or overall score
+      redundant Specialist field, put `Score · <value>` outside bullet lists,
+      omit `/ 100`, use readable spacing, put note bullets directly below the
+      score without a Notes label, and do not include a separate Score Notes
+      section or overall score
 - [ ] The Otter Council, Findings, and Testing sections are wrapped in
-      collapsed-by-default `<details>` blocks, with no `open` attribute
+      collapsed-by-default `<details>` blocks, with no `open` attribute, and
+      use `<summary><h3>...</h3></summary>` so collapsed headings match the
+      other section headers
 - [ ] Delivery matches mode: PR mode submits a formal review **and** shows
       the report in-conversation; local mode shows it in-conversation only
 - [ ] PR review verdict matches the final Recommendation: Approve or

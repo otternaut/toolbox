@@ -44,49 +44,55 @@ defeats the ticket's purpose — worth a fix before merge, not a fast-follow.
 - Missing concurrency coverage maps to the regression-test gap for the same failure mode. (Medium)
 
 <details>
-<summary>🦦 The Otter Council</summary>
+<summary><h3>🦦 The Otter Council</h3></summary>
 
 > 🟡 · ✅ **Correctness Specialist**
+>
 > **Score ·** 65
-> **Notes**
+>
 > - Rate limiter has a race condition under concurrent requests.
 > - The issue directly affects the core requirement because concurrent traffic can exceed the intended merchant limit.
 
 > 🟢 · 🧩 **Completeness Specialist**
+>
 > **Score ·** 85
-> **Notes**
+>
 > - Covers the main rate-limiting path.
 > - Redis-unavailable behavior is not defined, so the operational failure mode still needs a decision.
 
 > 🟡 · 🛡️ **Regression Risk Specialist**
+>
 > **Score ·** 80
-> **Notes**
+>
 > - Limited blast radius because the change is scoped to webhook rate limiting.
 > - Redis dependency behavior should be resolved before merge to avoid surprising webhook failures.
 
 > 🟢 · 🧹 **Code Quality Specialist**
+>
 > **Score ·** 90
-> **Notes**
+>
 > - Implementation is readable and follows local structure.
 > - The remaining concerns are behavioral rather than structural.
 
 > 🟡 · 🧪 **Testing Specialist**
+>
 > **Score ·** 60
-> **Notes**
+>
 > - Unit tests cover the happy path only.
 > - No concurrency test exercises the race condition.
 > - No Redis-down test documents the intended fallback behavior.
 
 > 🟢 · 🔒 **Security Specialist**
+>
 > **Score ·** 95
-> **Notes**
+>
 > - No authorization or sensitive-data concerns found in this change.
 > - The limiter does not appear to expose secrets or user data.
 
 </details>
 
 <details>
-<summary>🔎 Findings</summary>
+<summary><h3>🔎 Findings</h3></summary>
 
 #### 🟠 High · 1 Issue
 
@@ -128,7 +134,7 @@ defeats the ticket's purpose — worth a fix before merge, not a fast-follow.
 </details>
 
 <details>
-<summary>🧪 Testing</summary>
+<summary><h3>🧪 Testing</h3></summary>
 
 > **Existing coverage.**
 > - `rateLimiter.test.ts` covers a single request under the limit and a single request over it.
@@ -186,48 +192,54 @@ merge on its own; everything else here is minor.
 - The missing authorization check blocks a complete implementation and supports the same merge gate. (Critical)
 
 <details>
-<summary>🦦 The Otter Council</summary>
+<summary><h3>🦦 The Otter Council</h3></summary>
 
 > 🟢 · ✅ **Correctness Specialist**
+>
 > **Score ·** 90
-> **Notes**
+>
 > - Export logic is straightforward and appears to return the intended data.
 > - No obvious data-shaping or pagination bug is visible from the changed code.
 
 > 🟡 · 🧩 **Completeness Specialist**
+>
 > **Score ·** 70
-> **Notes**
+>
 > - Missing authorization check blocks a complete implementation.
 > - Acceptance criteria are unclear without a linked ticket or spec.
 
 > 🟢 · 🛡️ **Regression Risk Specialist**
+>
 > **Score ·** 90
-> **Notes**
+>
 > - New endpoint is isolated from existing flows.
 > - The security flaw affects exposed data even though it is not a broad regression.
 
 > 🟢 · 🧹 **Code Quality Specialist**
+>
 > **Score ·** 85
-> **Notes**
+>
 > - Code is simple and follows the surrounding handler style.
 > - The implementation would benefit from colocated authorization handling matching adjacent endpoints.
 
 > 🔴 · 🧪 **Testing Specialist**
+>
 > **Score ·** 50
-> **Notes**
+>
 > - No tests added for the new endpoint.
 > - No authorization regression test exists for cross-merchant access.
 
 > 🔴 · 🔒 **Security Specialist**
+>
 > **Score ·** 40
-> **Notes**
+>
 > - Missing authorization check is a real data-exposure risk.
 > - A merchant could potentially export another merchant's transactions.
 
 </details>
 
 <details>
-<summary>🔎 Findings</summary>
+<summary><h3>🔎 Findings</h3></summary>
 
 #### 🔴 Critical · 1 Issue
 
@@ -253,7 +265,7 @@ merge on its own; everything else here is minor.
 </details>
 
 <details>
-<summary>🧪 Testing</summary>
+<summary><h3>🧪 Testing</h3></summary>
 
 > **Existing coverage.**
 > - No automated tests exist for the new export endpoint (`exportController.ts` is untracked with no accompanying test file).
