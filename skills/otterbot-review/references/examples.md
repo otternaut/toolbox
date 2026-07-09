@@ -10,7 +10,7 @@ specificity and the exact formatting expected, not just the shape.
 
 **What happens:** a PR URL is present, so this is PR review mode (§1). The
 PR's title, description, and diff are fetched from the host. The reviewer runs
-or simulates the six-category expert council, reconciles the internal notes,
+or simulates the seven-category expert council, reconciles the internal notes,
 and publishes only the final sanitized report. The report below is generated,
 submitted as a formal review on PR #142, and also shown in the conversation
 (§7).
@@ -25,18 +25,14 @@ webhook endpoint. Mergeable after the missing-lock issue below is fixed —
 under concurrent requests the limiter can currently be bypassed.
 
 <details open>
-<summary><h3>📋 Requirements</h3></summary>
-
-Ticket PAY-881 asks for "no more than 50 requests/minute per merchant." The
-implementation matches that at the code level, but see the High finding
-below — under load, the actual enforced rate can exceed the limit.
-
-</details>
-<details open>
 <summary><h3>⚠️ Recommendation · Request Changes</h3></summary>
 
 The race condition means the rate limit isn't reliably enforced, which
 defeats the ticket's purpose — worth a fix before merge, not a fast-follow.
+
+#### 📋 Feedback · Requirements Specialist
+
+- Concurrent requests can exceed the stated 50 requests/minute merchant limit, so the implementation does not satisfy the core ticket requirement. (High)
 
 #### 🎯 Feedback · Correctness Specialist
 
@@ -46,41 +42,47 @@ defeats the ticket's purpose — worth a fix before merge, not a fast-follow.
 
 - Missing concurrency coverage maps to the regression-test gap for the same failure mode. (Medium)
 
-</details>
-<details>
+</details><details>
 <summary><h3>🦦 The Otter Council</h3></summary>
+
+> 📋 **Requirements Specialist**
+>
+> **Score ·** 🟡 70
+>
+> - Ticket PAY-881 asks for no more than 50 requests/minute per merchant.
+> - The implementation aims at the right requirement, but concurrent traffic can exceed the intended limit.
 
 > 🎯 **Correctness Specialist**
 >
-> **Score ·** 🟡 · 65
+> **Score ·** 🟡 65
 >
 > - Rate limiter has a race condition under concurrent requests.
 > - The issue directly affects the core requirement because concurrent traffic can exceed the intended merchant limit.
 
 > 🧩 **Completeness Specialist**
 >
-> **Score ·** 🟢 · 85
+> **Score ·** 🟢 85
 >
 > - Covers the main rate-limiting path.
 > - Redis-unavailable behavior is not defined, so the operational failure mode still needs a decision.
 
 > 🛡️ **Regression Risk Specialist**
 >
-> **Score ·** 🟡 · 80
+> **Score ·** 🟡 80
 >
 > - Limited blast radius because the change is scoped to webhook rate limiting.
 > - Redis dependency behavior should be resolved before merge to avoid surprising webhook failures.
 
 > 🧹 **Code Quality Specialist**
 >
-> **Score ·** 🟢 · 90
+> **Score ·** 🟢 90
 >
 > - Implementation is readable and follows local structure.
 > - The remaining concerns are behavioral rather than structural.
 
 > 🧪 **Testing Specialist**
 >
-> **Score ·** 🟡 · 60
+> **Score ·** 🟡 60
 >
 > - Unit tests cover the happy path only.
 > - No concurrency test exercises the race condition.
@@ -88,13 +90,12 @@ defeats the ticket's purpose — worth a fix before merge, not a fast-follow.
 
 > 🔒 **Security Specialist**
 >
-> **Score ·** 🟢 · 95
+> **Score ·** 🟢 95
 >
 > - No authorization or sensitive-data concerns found in this change.
 > - The limiter does not appear to expose secrets or user data.
 
-</details>
-<details>
+</details><details>
 <summary><h3>🔎 Findings</h3></summary>
 
 #### 🟠 High · 1 Issue
@@ -134,8 +135,7 @@ defeats the ticket's purpose — worth a fix before merge, not a fast-follow.
 > const LIMIT = 50;
 > ```
 
-</details>
-<details>
+</details><details>
 <summary><h3>🧪 Testing</h3></summary>
 
 > **Existing coverage.**
@@ -161,7 +161,7 @@ defeats the ticket's purpose — worth a fix before merge, not a fast-follow.
 status` shows one modified file and one new (untracked) file — both are
 included in the diff per the "Local review mode" steps, since a plain
 `git diff` alone would have missed the untracked file. The reviewer runs or
-simulates the six-category expert council and shares only the final sanitized
+simulates the seven-category expert council and shares only the final sanitized
 report in the conversation; nothing is posted anywhere (§7).
 
 **Report produced:**
@@ -174,15 +174,6 @@ authorization check, so any authenticated user could export any merchant's
 transactions.
 
 <details open>
-<summary><h3>📋 Requirements</h3></summary>
-
-No ticket was linked; based on the branch name (`csv-export`) and the diff,
-this appears to implement a merchant-facing "export transactions" feature.
-Can't confirm acceptance criteria without a ticket — worth double-checking
-against whatever spec exists before merging.
-
-</details>
-<details open>
 <summary><h3>⚠️ Recommendation · Request Changes</h3></summary>
 
 The missing authorization check is a data-exposure issue and should block
@@ -192,58 +183,67 @@ merge on its own; everything else here is minor.
 
 - Merchants could potentially export another merchant's transactions, which maps directly to the Critical data-exposure finding. (Critical)
 
+#### 📋 Feedback · Requirements Specialist
+
+- A merchant-facing export feature cannot meet the implied data-access requirement without merchant ownership checks. (Critical)
+
 #### 🧩 Feedback · Completeness Specialist
 
 - The missing authorization check blocks a complete implementation and supports the same merge gate. (Critical)
 
-</details>
-<details>
+</details><details>
 <summary><h3>🦦 The Otter Council</h3></summary>
+
+> 📋 **Requirements Specialist**
+>
+> **Score ·** 🟡 65
+>
+> - No ticket was linked, so acceptance criteria are inferred from the branch name and diff.
+> - A merchant export feature implies merchant-scoped data access, which the implementation does not enforce.
 
 > 🎯 **Correctness Specialist**
 >
-> **Score ·** 🟢 · 90
+> **Score ·** 🟢 90
 >
 > - Export logic is straightforward and appears to return the intended data.
 > - No obvious data-shaping or pagination bug is visible from the changed code.
 
 > 🧩 **Completeness Specialist**
 >
-> **Score ·** 🟡 · 70
+> **Score ·** 🟡 70
 >
 > - Missing authorization check blocks a complete implementation.
 > - Acceptance criteria are unclear without a linked ticket or spec.
 
 > 🛡️ **Regression Risk Specialist**
 >
-> **Score ·** 🟢 · 90
+> **Score ·** 🟢 90
 >
 > - New endpoint is isolated from existing flows.
 > - The security flaw affects exposed data even though it is not a broad regression.
 
 > 🧹 **Code Quality Specialist**
 >
-> **Score ·** 🟢 · 85
+> **Score ·** 🟢 85
 >
 > - Code is simple and follows the surrounding handler style.
 > - The implementation would benefit from colocated authorization handling matching adjacent endpoints.
 
 > 🧪 **Testing Specialist**
 >
-> **Score ·** 🔴 · 50
+> **Score ·** 🔴 50
 >
 > - No tests added for the new endpoint.
 > - No authorization regression test exists for cross-merchant access.
 
 > 🔒 **Security Specialist**
 >
-> **Score ·** 🔴 · 40
+> **Score ·** 🔴 40
 >
 > - Missing authorization check is a real data-exposure risk.
 > - A merchant could potentially export another merchant's transactions.
 
-</details>
-<details>
+</details><details>
 <summary><h3>🔎 Findings</h3></summary>
 
 #### 🔴 Critical · 1 Issue
@@ -267,8 +267,7 @@ merge on its own; everything else here is minor.
 > - **Why it matters:** Nothing currently guards against a regression here, and the missing-auth issue above is exactly the kind of thing a test would have caught.
 > - **Fix:** Add a test asserting a user from merchant A gets a 403 when requesting merchant B's export.
 
-</details>
-<details>
+</details><details>
 <summary><h3>🧪 Testing</h3></summary>
 
 > **Existing coverage.**

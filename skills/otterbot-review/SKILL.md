@@ -1,7 +1,7 @@
 ---
 name: otterbot-review
 description: Perform a principal-level code review, producing a structured Markdown report with severity-tagged findings and a scorecard. Given a pull/merge request URL, reviews that PR and submits the report as a formal review — approving when the recommendation is Approve, commenting neutrally when it is Comment Only, and requesting changes otherwise. Given no URL, reviews the current local code changes and presents the report in the conversation. Use this whenever the user asks to "review this PR", "review my diff", "analyze this code change", "do a code review", "check this pull request for issues", pastes a pull-request URL and asks for feedback, or wants a merge-readiness assessment. Works with any git hosting provider (GitHub, GitLab, Bitbucket, etc.).
-version: 1.7.9
+version: 1.7.12
 ---
 
 # Otterbot Review
@@ -74,8 +74,10 @@ review.
 
 Evaluate the change for:
 
-- **Correctness:** bugs, edge cases, broken logic, race conditions, error
-  handling, and requirement fit.
+- **Requirements:** intended business/product outcomes, explicit acceptance
+  criteria, linked-ticket fit, scope boundaries, and requirement ambiguity.
+- **Correctness:** bugs, edge cases, broken logic, race conditions, and error
+  handling.
 - **Completeness:** missing states, validation, integrations, cleanup,
   tests, or partial implementation.
 - **Regression risk:** side effects on existing flows, APIs, data, UI
@@ -91,10 +93,10 @@ Evaluate the change for:
 ## 3. Parallel expert council review
 
 After gathering the change set and surrounding context, run an expert council:
-one independent specialist pass per scorecard category. Perform the six passes
-in parallel only when the host provides safe internal delegation whose
+one independent specialist pass per Otter Council category. Perform the seven
+passes in parallel only when the host provides safe internal delegation whose
 read-only, no-delivery boundary can be enforced; otherwise, simulate the same
-six specialist passes yourself in a serial flow. The goal is faster review
+seven specialist passes yourself in a serial flow. The goal is faster review
 without weakening judgment: each expert digs deeply into its area, then the
 coordinator reconciles the council's work into one final principal-level
 report.
@@ -136,9 +138,15 @@ return:
 
 Use these specialist instructions:
 
+- **Requirements expert:** Decide what the change is supposed to accomplish.
+  Extract explicit requirements from PR/MR text, linked tickets, branch or
+  commit context, and user-provided acceptance criteria; infer only the
+  smallest reasonable implicit requirements from the diff. Separate unclear
+  requirements from unmet requirements, and score how well the implementation
+  satisfies the intended outcome.
 - **Correctness expert:** Prove whether the changed behavior is right. Trace
   changed control flow, state transitions, invariants, edge cases, concurrency,
-  error handling, retries, idempotency, and requirement fit. Prefer findings
+  error handling, retries, and idempotency. Prefer findings
   backed by executable paths, concrete inputs, or violated invariants.
 - **Completeness expert:** Map the implementation to the stated requirements
   and expected user/system states. Look for missing validation, integrations,
@@ -230,9 +238,9 @@ Produce the report in exactly this structure. Keep it clean and scannable:
 plain section headings and each finding in its own callout card. Use a
 top-level heading (`##`) for the title so its underline rule visually
 separates it from the rest of the report. Do **not** add horizontal rules
-anywhere else — not between top-level sections (Summary, expanded Requirements,
-expanded Recommendation, collapsed The Otter Council, collapsed Findings,
-collapsed Testing) and not between individual finding cards within Findings —
+anywhere else — not between top-level sections (Summary, expanded
+Recommendation, collapsed The Otter Council, collapsed Findings, collapsed
+Testing) and not between individual finding cards within Findings —
 the section headings and blockquote cards already create enough visual
 separation on their own.
 
@@ -243,13 +251,6 @@ Briefly state overall quality, merge readiness, and the highest-risk
 concern, if any. Leave the verdict itself to the Recommendation section —
 the Summary sets up the narrative, not the decision.
 
-<details open>
-<summary><h3>📋 Requirements</h3></summary>
-
-State whether the change appears to satisfy the intended business/product
-requirements. Note any ambiguity or missing acceptance criteria.
-
-</details>
 <details open>
 <summary><h3>⚠️ Recommendation · Request Changes</h3></summary>
 
@@ -275,6 +276,10 @@ specialist notes when useful.
 
 Explain the recommendation in 1-2 concise sentences.
 
+#### 📋 Feedback · Requirements Specialist
+
+- The implementation misses a stated acceptance criterion. (High)
+
 #### 🎯 Feedback · Correctness Specialist
 
 - Concurrent requests can bypass the limit, which maps to the atomicity finding. (High)
@@ -283,8 +288,7 @@ Explain the recommendation in 1-2 concise sentences.
 
 - Missing concurrency coverage maps to the regression-test gap. (Medium)
 
-</details>
-<details>
+</details><details>
 <summary><h3>🦦 The Otter Council</h3></summary>
 
 Score each category from 0-100, where 100 means excellent and merge-ready
@@ -294,8 +298,10 @@ Present each scorecard item as a plain blockquote card, not a table and not a
 GitHub alert. GitHub alert blockquotes add a visible `Tip`, `Warning`, or
 `Caution` label above the content; do not use them here.
 
+- Include a Requirements Specialist card; do not use a separate Requirements
+  section.
 - Start each card with the category emoji and specialist name.
-- Put `**Score ·** <indicator> · <value>` on its own line, not in a bullet
+- Put `**Score ·** <indicator> <value>` on its own line, not in a bullet
   list. Do not add `/ 100`; the score is always assumed to be out of 100.
 - Put one or more note bullets directly below the score. Do not add a
   **Notes** label in Otter Council cards; the bullets replace the old separate
@@ -317,6 +323,7 @@ Use a score-status circle between `Score` and the value:
 Use category emojis consistently in both Recommendation feedback headings and
 Otter Council cards:
 
+- Requirements → `📋`
 - Correctness → `🎯`
 - Completeness → `🧩`
 - Regression Risk → `🛡️`
@@ -324,35 +331,41 @@ Otter Council cards:
 - Testing → `🧪`
 - Security → `🔒`
 
+> 📋 **Requirements Specialist**
+>
+> **Score ·** 🟢 81-99
+>
+> - Detailed requirement-fit rationale.
+> - Ambiguity or acceptance-criteria notes, when needed.
+
 > 🎯 **Correctness Specialist**
 >
-> **Score ·** 🟢 · 81-99
+> **Score ·** 🟢 81-99
 >
 > - Detailed finding or rationale.
 > - Another relevant observation, when needed.
 
 > 🧪 **Testing Specialist**
 >
-> **Score ·** 🟡 · 60-80
+> **Score ·** 🟡 60-80
 >
 > - Detailed finding or rationale.
 
 > 🔒 **Security Specialist**
 >
-> **Score ·** 🔴 · <60
+> **Score ·** 🔴 <60
 >
 > - Detailed finding or rationale.
 
 > 🧹 **Code Quality Specialist**
 >
-> **Score ·** 🔵 · 100
+> **Score ·** 🔵 100
 >
 > - Detailed finding or rationale.
 
 Do not add a separate **Score Notes** section or an overall score.
 
-</details>
-<details>
+</details><details>
 <summary><h3>🔎 Findings</h3></summary>
 
 Group findings by severity, most severe first. Severity headings use the
@@ -400,8 +413,7 @@ consecutive cards so they render as separate callouts — no horizontal rules:
 > - **Why it matters:** ...
 > - **Fix:** ...
 
-</details>
-<details>
+</details><details>
 <summary><h3>🧪 Testing</h3></summary>
 
 Give a thorough, specific picture of testing — not a one-line note. Cover,
@@ -480,9 +492,9 @@ for what a full pass looks like):
       mode")
 - [ ] Surrounding context pulled in beyond the raw diff: description,
       linked tickets, existing tests, related code
-- [ ] All six review focus areas considered (§2), even the ones that turn
+- [ ] All seven review focus areas considered (§2), even the ones that turn
       up nothing
-- [ ] One specialist pass completed for each scorecard category, using safe
+- [ ] One specialist pass completed for each Otter Council category, using safe
       parallel delegation only when the internal boundary can be enforced and
       an explicit serial fallback otherwise (§3)
 - [ ] Specialist passes stayed internal-only: no comments, reviews, file
@@ -499,16 +511,18 @@ for what a full pass looks like):
 - [ ] Output follows the exact §6 structure, with empty severity sections
       omitted, no horizontal rules, and each severity heading tagged with its
       finding count
-- [ ] Requirements and Recommendation are wrapped in expanded-by-default
-      `<details open>` blocks, and Recommendation appears before The Otter
+- [ ] Recommendation is wrapped in an expanded-by-default `<details open>`
+      block and appears before The Otter Council; requirements are represented
+      by the scored Requirements Specialist card, not a standalone section
 - [ ] Any Request Changes recommendation uses one emoji-prefixed
       `Feedback · <Specialist>`
       subsection per relevant specialist, omits specialists without
       recommendation-driving notes, and does not use a generic Notes or
       must-fix list
 - [ ] The Otter Council cards are plain blockquotes with no GitHub alert
-      labels, include category emojis in the heading, omit the redundant
-      Specialist field, put `Score · <indicator> · <value>` outside bullet
+      labels, include the scored Requirements Specialist card, include category
+      emojis in the heading, omit the redundant Specialist field, put
+      `Score · <indicator> <value>` outside bullet
       lists, omit `/ 100`, use readable spacing, put note bullets directly
       below the score without a Notes label, and do not include a separate
       Score Notes section or overall score
@@ -517,8 +531,8 @@ for what a full pass looks like):
       use `<summary><h3>...</h3></summary>` so collapsed headings match the
       other section headers
 - [ ] Spacing between adjacent collapsible sections is tight: close one
-      `</details>` and start the next `<details>` on the following line, with
-      no extra blank line between them
+      `</details>` and start the next `<details>` immediately on the same line,
+      with no newline or blank line between them
 - [ ] Delivery matches mode: PR mode posts the report to the PR/MR with the
       correct verdict semantics **and** shows it in-conversation; local mode
       shows it in-conversation only
