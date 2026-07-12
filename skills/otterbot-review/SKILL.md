@@ -1,7 +1,7 @@
 ---
 name: otterbot-review
 description: Perform a principal-level code review, producing a structured Review Council post with Specialist Scores and inline source-specific findings. Given a pull/merge request URL, reviews that PR and delivers the report with the correct verdict semantics — approving when the verdict is Ship It! or Comment Only, and requesting changes otherwise. Given no URL, reviews the current local code changes and presents the report in the conversation. Use this whenever the user asks to "review this PR", "review my diff", "analyze this code change", "do a code review", "check this pull request for issues", pastes a pull-request URL and asks for feedback, or wants a merge-readiness assessment. Works with any git hosting provider (GitHub, GitLab, Bitbucket, etc.).
-version: 1.14.0
+version: 1.14.1
 ---
 
 # Otterbot Review
@@ -292,15 +292,15 @@ main Review Council post.
 Produce the report in exactly this structure. Keep it clean and scannable:
 plain `####` section headings for Summary and Verdict, then collapsible
 `<details>` sections for Specialist Scores, Findings Overview, and Testing.
-In PR review mode, start with a `###` title heading using the fetched PR/MR
-title exactly as the host reports it: `### 🦦 Council Review &middot; <pr_title>`.
+In PR review mode, start with a `####` title heading using the fetched PR/MR
+title exactly as the host reports it: `#### 🦦 Council Review &middot; <pr_title>`.
 Do not invent, paraphrase, or synthesize a title. In local review mode, where no
 PR/MR title exists, skip the title heading entirely and start with Summary. Do
 **not** add horizontal rules; the section headings, details summaries, and
 blockquote cards already create enough visual separation on their own.
 
 ```markdown
-### 🦦 Council Review &middot; <literal PR/MR title>
+#### 🦦 Council Review &middot; <literal PR/MR title>
 
 #### 📝 Summary
 
@@ -608,7 +608,7 @@ for what a full pass looks like):
 - [ ] Public report quotes redact secrets, credentials, private ticket text,
       customer data, and sensitive payloads rather than repeating them verbatim
 - [ ] No findings invented just to fill an empty severity bucket
-- [ ] Output follows the exact §6 structure, with the `### 🦦 Council Review
+- [ ] Output follows the exact §6 structure, with the `#### 🦦 Council Review
       &middot; <literal PR/MR title>` heading only in PR mode, `#### 📝 Summary`
       above the opening paragraph, a `#### <emoji> Verdict · <verdict>` heading
       immediately below the Summary, no horizontal rules, and collapsible

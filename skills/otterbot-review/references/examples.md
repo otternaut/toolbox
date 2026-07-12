@@ -21,7 +21,7 @@ submitted as a formal review on PR #142, and also shown in the conversation
 **Report produced:**
 
 ```markdown
-### 🦦 Council Review &middot; Add webhook rate limiting
+#### 🦦 Council Review &middot; Add webhook rate limiting
 
 #### 📝 Summary
 
