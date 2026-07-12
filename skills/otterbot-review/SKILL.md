@@ -1,7 +1,7 @@
 ---
 name: otterbot-review
 description: Perform a principal-level code review, producing a structured Review Council post with Specialist Scores and inline source-specific findings. Given a pull/merge request URL, reviews that PR and delivers the report with the correct verdict semantics — approving when the verdict is Ship It! or Comment Only, and requesting changes otherwise. Given no URL, reviews the current local code changes and presents the report in the conversation. Use this whenever the user asks to "review this PR", "review my diff", "analyze this code change", "do a code review", "check this pull request for issues", pastes a pull-request URL and asks for feedback, or wants a merge-readiness assessment. Works with any git hosting provider (GitHub, GitLab, Bitbucket, etc.).
-version: 1.13.0
+version: 1.14.0
 ---
 
 # Otterbot Review
@@ -51,6 +51,15 @@ linked requirements, changed files, and diff using whatever access you have in
 the current environment (a CLI for that host, an API, a browsing tool). Use
 this context to inform the review — never invent or assume it.
 
+Also fetch the PR/MR's current visible review comments, review threads, and
+discussion state when the host makes them available. Use them only as freshness
+and deduplication context, not as material to critique. Do not review prior
+comments, argue with prior reviewers, or raise a finding that is already covered
+by an existing visible thread. If a comment or thread is resolved, hidden,
+outdated, or otherwise no longer visible as active feedback, assume it has been
+fixed or intentionally ignored and do not resurrect it solely from comment
+history.
+
 If the PR data can't be fetched (no access, no matching tool, auth error),
 say so plainly and offer to review from a pasted diff instead of silently
 falling back to something else.
@@ -74,6 +83,11 @@ Review the full local change set, not just tracked-file edits:
 Use the change description (commit messages, branch name, or context the
 user has given you) in place of a PR title/description.
 
+When prior local or in-app review comments are available, use them only to avoid
+duplicating active feedback. The review itself must be a fresh pass over the
+current change set and must already account for new commits, amended code, and
+comment-status changes.
+
 ### Gathering context
 
 Once you know the target, pull in enough surrounding context to judge the
@@ -81,6 +95,12 @@ change properly, not just the diff in isolation: the PR/commit description,
 any linked Jira or Linear tickets, other requirements, the existing tests, and
 relevant parts of the codebase the change touches. A diff without context
 produces a shallow review.
+
+Treat the current diff and current active discussion state as authoritative for
+the review. Prior comments and earlier revisions are not review targets. Use
+them only to understand what feedback is still active so the final report does
+not duplicate it; resolved, hidden, outdated, or inactive comments should not
+be re-raised.
 
 ## 2. Review focus
 
@@ -272,13 +292,15 @@ main Review Council post.
 Produce the report in exactly this structure. Keep it clean and scannable:
 plain `####` section headings for Summary and Verdict, then collapsible
 `<details>` sections for Specialist Scores, Findings Overview, and Testing.
-Use a top-level heading (`##`) for the title so its underline rule visually
-separates it from the rest of the report. Do **not** add horizontal rules
-anywhere else; the section headings, details summaries, and blockquote cards
-already create enough visual separation on their own.
+In PR review mode, start with a `###` title heading using the fetched PR/MR
+title exactly as the host reports it: `### 🦦 Council Review &middot; <pr_title>`.
+Do not invent, paraphrase, or synthesize a title. In local review mode, where no
+PR/MR title exists, skip the title heading entirely and start with Summary. Do
+**not** add horizontal rules; the section headings, details summaries, and
+blockquote cards already create enough visual separation on their own.
 
 ```markdown
-## 🦦 Otter Review Council
+### 🦦 Council Review &middot; <literal PR/MR title>
 
 #### 📝 Summary
 
@@ -537,7 +559,11 @@ Delivery follows the mode determined in §1:
   the review as complete or as delivered.
 - **super.engineering review surface:** when running inside super.engineering,
   use in-app review comments only as an additional delivery surface or when
-  there is no PR/MR URL. If you add in-app comments, post the complete Review
+  there is no PR/MR URL. Read current in-app review comments with
+  `sc worktree review-list --json` before posting so the review is fresh and
+  does not duplicate active feedback; do not review prior comments themselves,
+  and treat resolved, hidden, outdated, or inactive comments as fixed or
+  intentionally ignored. If you add in-app comments, post the complete Review
   Council Markdown first with `sc worktree review-add ...` using the
   `otterbot-review` provider, then post source-specific inline code comments on
   the smallest relevant changed line range. In PR review mode, these comments
@@ -560,6 +586,10 @@ for what a full pass looks like):
 - [ ] Surrounding context pulled in beyond the raw diff: description,
       linked Jira or Linear tickets, other requirements, existing tests,
       related code
+- [ ] Current visible review comments/threads were checked when available for
+      deduplication only; prior comments and earlier revisions were not
+      reviewed as targets, and resolved, hidden, outdated, or inactive comments
+      were not re-raised
 - [ ] All seven review focus areas considered (§2), even the ones that turn
       up nothing
 - [ ] One specialist pass completed for each Specialist Scores category, using safe
@@ -578,11 +608,11 @@ for what a full pass looks like):
 - [ ] Public report quotes redact secrets, credentials, private ticket text,
       customer data, and sensitive payloads rather than repeating them verbatim
 - [ ] No findings invented just to fill an empty severity bucket
-- [ ] Output follows the exact §6 structure, with `#### 📝 Summary` above the
-      opening paragraph, a `#### <emoji> Verdict · <verdict>` heading
+- [ ] Output follows the exact §6 structure, with the `### 🦦 Council Review
+      &middot; <literal PR/MR title>` heading only in PR mode, `#### 📝 Summary`
+      above the opening paragraph, a `#### <emoji> Verdict · <verdict>` heading
       immediately below the Summary, no horizontal rules, and collapsible
-      `<details>` sections for Specialist Scores, Findings Overview, and
-      Testing
+      `<details>` sections for Specialist Scores, Findings Overview, and Testing
 - [ ] Requirements are represented by the scored Requirements Specialist card,
       not a standalone section
 - [ ] The Verdict section is short: only the verdict heading and a 1-2 sentence
@@ -612,7 +642,8 @@ for what a full pass looks like):
       local mode shows it in-conversation only
 - [ ] In super.engineering, in-app review delivery is never used as a
       substitute for host delivery when a PR/MR URL is present; when used, it
-      posts the complete Review Council Markdown as the first
+      checks current in-app comments for deduplication, then posts the complete
+      Review Council Markdown as the first
       `otterbot-review` comment, then posts source-specific inline code
       comments underneath it
 - [ ] PR review verdict matches the final Verdict: Ship It! → approved;

@@ -9,8 +9,10 @@ specificity and the exact formatting expected, not just the shape.
 **User:** "review https://github.com/acme/payhub/pull/142"
 
 **What happens:** a PR URL is present, so this is PR review mode (§1). The
-PR's title, description, linked Jira or Linear ticket when present, and diff
-are fetched from the host. The reviewer runs
+PR's title ("Add webhook rate limiting"), description, linked Jira or Linear
+ticket when present, current active review-thread state, and diff are fetched
+from the host. Prior comments are used only to avoid duplicate active feedback,
+not as material to review. The reviewer runs
 or simulates the seven-category expert council, reconciles the internal notes,
 and publishes only the final sanitized report. The report below is generated,
 submitted as a formal review on PR #142, and also shown in the conversation
@@ -19,7 +21,7 @@ submitted as a formal review on PR #142, and also shown in the conversation
 **Report produced:**
 
 ```markdown
-## 🦦 Otter Review Council
+### 🦦 Council Review &middot; Add webhook rate limiting
 
 #### 📝 Summary
 
@@ -174,8 +176,6 @@ report in the conversation; nothing is posted anywhere (§7).
 **Report produced:**
 
 ```markdown
-## 🦦 Otter Review Council
-
 #### 📝 Summary
 
 Small, well-scoped addition. One real gap: the new export endpoint has no
