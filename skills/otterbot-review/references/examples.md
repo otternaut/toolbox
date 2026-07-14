@@ -39,7 +39,7 @@ The race condition means the rate limit isn't reliably enforced, which
 defeats the ticket's purpose — worth a fix before merge, not a fast-follow.
 
 <details>
-<summary>🦦 <strong>Specialist Scores</strong></summary>
+<summary>🦦 <strong>Scorecard</strong></summary>
 
 <br>
 
@@ -93,7 +93,7 @@ defeats the ticket's purpose — worth a fix before merge, not a fast-follow.
 </details>
 
 <details>
-<summary>🔎 <strong>Findings Overview</strong></summary>
+<summary>🔎 <strong>Findings</strong></summary>
 
 <br>
 
@@ -219,7 +219,7 @@ the High atomicity finding is resolved, while the remaining Medium and new Low
 findings do not block a safe merge.
 
 <details>
-<summary>🦦 <strong>Specialist Scores</strong></summary>
+<summary>🦦 <strong>Scorecard</strong></summary>
 
 <br>
 
@@ -266,7 +266,7 @@ findings do not block a safe merge.
 </details>
 
 <details>
-<summary>🔎 <strong>Findings Overview</strong></summary>
+<summary>🔎 <strong>Findings</strong></summary>
 
 <br>
 
@@ -305,7 +305,7 @@ findings do not block a safe merge.
 </details>
 
 <details>
-<summary>🕰️ <strong>Review History</strong></summary>
+<summary>🕰️ <strong>History</strong></summary>
 
 <br>
 
@@ -358,7 +358,7 @@ The missing authorization check is a data-exposure issue and should block
 merge on its own; everything else here is minor.
 
 <details>
-<summary>🦦 <strong>Specialist Scores</strong></summary>
+<summary>🦦 <strong>Scorecard</strong></summary>
 
 <br>
 
@@ -406,7 +406,7 @@ merge on its own; everything else here is minor.
 </details>
 
 <details>
-<summary>🔎 <strong>Findings Overview</strong></summary>
+<summary>🔎 <strong>Findings</strong></summary>
 
 <br>
 
