@@ -1,7 +1,7 @@
 ---
 name: otterbot-review
 description: Perform an adversarial principal-architect code review that tries to prove the change unsafe before approving it, producing a structured Review Council post with a Scorecard and inline source-specific findings. Given a pull/merge request URL, reviews that PR and delivers the report with the correct verdict semantics — approving when the verdict is Ship It! or Comment Only, and requesting changes otherwise. Given no URL, reviews the current local code changes and presents the report in the conversation. Use this whenever the user asks to "review this PR", "review my diff", "analyze this code change", "do a code review", "check this pull request for issues", pastes a pull-request URL and asks for feedback, wants a nitpicky review, or wants a merge-readiness assessment. Works with any git hosting provider (GitHub, GitLab, Bitbucket, etc.).
-version: 2.4.1
+version: 2.4.2
 ---
 
 # Otterbot Review
@@ -842,26 +842,28 @@ Blank line between cards, no horizontal rules.
 
 Include this section only for a PR re-review, immediately after Testing. Keep
 every prior Council review entry already present in the latest attributable
-History and add the current re-review as the newest chronological blockquote
-card. If there is no cumulative History yet, begin with the original review.
-Use an ISO 8601 timestamp with UTC offset, the review or comment URL/ID when
+History and prepend the current re-review. Render entries in reverse
+chronological order: newest first and the original review last. If there is no
+cumulative History yet, begin with the current re-review followed by the
+original review. Use a human-readable timestamp with an explicit timezone, for
+example `July 14, 2026 at 2:42 PM UTC`, plus the review or comment URL/ID when
 available, verdict, findings summary, and status. Do not invent timestamps or
 links. Never drop intermediate re-reviews when creating a new root report on a
 surface that archives superseded comments.
 
-> **Original review · <timestamp> · <verdict>**
->
-> - Review: <original-review-url-or-id>
-> - Head: `<full-head-sha>`.
-> - Findings: <summary of original severity counts and key concerns>.
-> - Status: Superseded by re-review at <timestamp>.
-
-> **Re-review · <timestamp> · <updated-verdict>**
+> **Re-review · <human-readable-timestamp> · <updated-verdict>**
 >
 > - Review: <updated-review-url-or-id>; updated in place, or supersedes the original because editing was unavailable.
 > - Head: `<full-head-sha>`.
 > - Findings: <active, resolved, no-longer-applicable, and newly discovered counts>.
 > - Status: <current merge-readiness status and any unresolved blocker>.
+
+> **Original review · <human-readable-timestamp> · <verdict>**
+>
+> - Review: <original-review-url-or-id>
+> - Head: `<full-head-sha>`.
+> - Findings: <summary of original severity counts and key concerns>.
+> - Status: Superseded by re-review at <human-readable-timestamp>.
 
 </details>
 ```
@@ -1110,9 +1112,10 @@ for what a full pass looks like):
       when supported; otherwise exactly one dated superseding host root report
       was posted with an original-review link, updated Verdict justification,
       and History immediately after Testing
-- [ ] A re-review's History preserves cumulative chronological cards for the
-      original, every intermediate re-review, and the current review, each with
-      its review reference, verdict, findings summary, and status
+- [ ] A re-review's History preserves cards for the current review, every
+      intermediate re-review, and the original review in reverse chronological
+      order (newest first), each with a human-readable, timezone-explicit
+      timestamp, review reference, verdict, findings summary, and status
 - [ ] On the hosting provider, every directly verified, attributable resolved
       or no-longer-applicable Otterbot inline finding thread was resolved and
       its comments preserved; continued findings were recreated or updated
