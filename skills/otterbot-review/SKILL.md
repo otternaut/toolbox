@@ -1,7 +1,7 @@
 ---
 name: otterbot-review
 description: Perform an adversarial principal-architect code review that tries to prove the change unsafe before approving it, producing a structured Review Council post with a Scorecard and inline source-specific findings. Given a pull/merge request URL, reviews that PR and delivers the report with the correct verdict semantics — approving when the verdict is Ship It! or Comment Only, and requesting changes otherwise. Given no URL, reviews the current local code changes and presents the report in the conversation. Use this whenever the user asks to "review this PR", "review my diff", "analyze this code change", "do a code review", "check this pull request for issues", pastes a pull-request URL and asks for feedback, wants a nitpicky review, or wants a merge-readiness assessment. Works with any git hosting provider (GitHub, GitLab, Bitbucket, etc.).
-version: 2.2.2
+version: 2.3.0
 ---
 
 # Otterbot Review
@@ -122,15 +122,18 @@ history and a mapping aid, not evidence that a concern still exists:
    visible in History and the delivery summary; never claim it was
    hidden or resolved.
 
-Resolve an inline thread only when it was authored by the reviewing agent,
-maps to an original Otterbot finding, and current evidence directly verifies
-the finding is resolved or no longer applicable. Use the host's supported
-thread-resolution operation and add a concise resolution note that references
-the original review. Never resolve another author's thread, an ambiguous
-thread, or a thread merely because it is outdated. If thread resolution or
-comment editing is unsupported, add one concise reply on the original thread
-when supported; otherwise record the status in the re-review's Findings and
-History.
+On the hosting provider, resolve an inline thread only when it was authored by
+the reviewing agent, maps to an original Otterbot finding, and current evidence
+directly verifies the finding is resolved or no longer applicable. Use the
+host's supported thread-resolution operation and add a concise resolution note
+that references the original review. Never resolve another author's thread, an
+ambiguous thread, or a thread merely because it is outdated. If thread
+resolution or comment editing is unsupported, add one concise reply on the
+original thread when supported; otherwise record the status in the re-review's
+Findings and History. The super.engineering in-app surface has a separate
+generation-archiving lifecycle in §7: all attributable comments from an older
+Otterbot delivery are resolved when the new delivery supersedes them, while
+active findings are recreated as current-generation inline comments.
 
 ### Local review mode
 
@@ -795,10 +798,13 @@ Blank line between cards, no horizontal rules.
 <br>
 
 Include this section only for a PR re-review, immediately after Testing. Keep
-the original review information and add the current re-review as chronological
-blockquote cards. Use an ISO 8601 timestamp with UTC offset, the review or
-comment URL/ID when available, verdict, findings summary, and status. Do not
-invent timestamps or links.
+every prior Council review entry already present in the latest attributable
+History and add the current re-review as the newest chronological blockquote
+card. If there is no cumulative History yet, begin with the original review.
+Use an ISO 8601 timestamp with UTC offset, the review or comment URL/ID when
+available, verdict, findings summary, and status. Do not invent timestamps or
+links. Never drop intermediate re-reviews when creating a new root report on a
+surface that archives superseded comments.
 
 > **Original review · <timestamp> · <verdict>**
 >
@@ -928,15 +934,30 @@ Delivery follows the mode determined in §1:
   are optional extras and must come after, or at least never replace, the
   hosting-provider review.
 
-  For a PR re-review, first list and identify attributable in-app Otterbot
-  comments. Use `sc worktree review-reply <comment_id> --provider
-  otterbot-review --resolve` only for an original inline comment whose
-  resolution was directly verified. Because this surface has no documented
-  body-update operation, add one dated reply to the original Council comment
-  containing the superseding report and History, rather than creating a
-  second unrelated root comment. Use `sc worktree review-reply` for any
-  continued or resolved original-thread status; do not alter other authors'
-  comments.
+  For a PR re-review, treat each successful in-app delivery as a generation.
+  First list the comments and identify every attributable comment whose
+  provider is `otterbot-review`, including old Council roots, inline findings,
+  and replies from every prior generation. Preserve their Council metadata and
+  cumulative History for the new report, then archive every identified old
+  root and thread with `sc worktree review-reply <comment_id> --provider
+  otterbot-review --resolve`. Resolve only attributable Otterbot comments;
+  never alter another provider's or author's comment. This archival resolution
+  means "superseded on the in-app surface," not "the underlying finding was
+  fixed": carry any still-active finding into the new report and recreate it as
+  a current-generation inline comment with the same stable
+  `otterbot-finding` ID.
+
+  After all old Otterbot comments and threads are confirmed resolved, create
+  exactly one new root comment with `sc worktree review-add`. Its body is the
+  complete current Council report and cumulative History, including every
+  prior review and this re-review. Then add only the current active
+  source-specific findings as new inline comments. Do not post the report as a
+  reply to an old root, and do not leave any prior-generation Otterbot comment
+  active. If any old attributable comment cannot be resolved, report the
+  failure and do not claim that only the newest generation is visible. If the
+  new root cannot be created after archival, state the delivery failure and
+  present the complete report in the conversation rather than posting orphaned
+  inline comments.
 
 - **Local review mode:** present the report in the conversation only. There
   is no PR to comment on, and nothing should be published anywhere else
@@ -1031,15 +1052,17 @@ for what a full pass looks like):
 - [ ] Testing is collapsible and uses rich cards for results, inspected
       evidence, risk analysis, coverage gaps, and recommended verification
       whenever those details are available
-- [ ] A re-review's editable root report was updated in place when supported;
-      otherwise exactly one dated superseding root report was posted with an
-      original-review link, updated Verdict justification, and History
-      immediately after Testing
-- [ ] A re-review's History has timestamped original and current cards,
-      each with its review reference, verdict, findings summary, and status
-- [ ] Only verified, attributable Otterbot inline threads were resolved;
-      continued findings were updated or replied to, and new findings reference
-      the original review without duplicating active feedback
+- [ ] A re-review's editable hosting-provider root report was updated in place
+      when supported; otherwise exactly one dated superseding host root report
+      was posted with an original-review link, updated Verdict justification,
+      and History immediately after Testing
+- [ ] A re-review's History preserves cumulative chronological cards for the
+      original, every intermediate re-review, and the current review, each with
+      its review reference, verdict, findings summary, and status
+- [ ] On the hosting provider, only directly verified, attributable Otterbot
+      inline threads were resolved; continued findings were updated or replied
+      to, and new findings reference the original review without duplicating
+      active feedback
 - [ ] Every PR root report includes its full reviewed head SHA in the hidden
       Otterbot marker; every inline finding has a stable hidden finding ID
 - [ ] When an immutable prior formal review could still affect the host's
@@ -1064,6 +1087,11 @@ for what a full pass looks like):
       Review Council Markdown as the first
       `otterbot-review` comment, then posts source-specific inline code
       comments underneath it
+- [ ] On a super.engineering in-app re-review, every attributable
+      prior-generation `otterbot-review` root, inline comment, and reply was
+      resolved before delivery; exactly one new Council root with cumulative
+      History was then posted, and only current active findings were recreated
+      as inline comments with their stable IDs
 - [ ] PR review verdict matches the final Verdict: Ship It! → approved;
       Comment Only → approved; Request Changes → changes requested (§7)
 - [ ] Re-review delivery summary counts resolved, active, and new findings,
