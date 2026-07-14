@@ -1,7 +1,7 @@
 ---
 name: otterbot-review
-description: Perform an adversarial principal-architect code review that tries to prove the change unsafe before approving it, producing a structured Review Council post with Specialist Scores and inline source-specific findings. Given a pull/merge request URL, reviews that PR and delivers the report with the correct verdict semantics — approving when the verdict is Ship It! or Comment Only, and requesting changes otherwise. Given no URL, reviews the current local code changes and presents the report in the conversation. Use this whenever the user asks to "review this PR", "review my diff", "analyze this code change", "do a code review", "check this pull request for issues", pastes a pull-request URL and asks for feedback, wants a nitpicky review, or wants a merge-readiness assessment. Works with any git hosting provider (GitHub, GitLab, Bitbucket, etc.).
-version: 2.2.0
+description: Perform an adversarial principal-architect code review that tries to prove the change unsafe before approving it, producing a structured Review Council post with a Scorecard and inline source-specific findings. Given a pull/merge request URL, reviews that PR and delivers the report with the correct verdict semantics — approving when the verdict is Ship It! or Comment Only, and requesting changes otherwise. Given no URL, reviews the current local code changes and presents the report in the conversation. Use this whenever the user asks to "review this PR", "review my diff", "analyze this code change", "do a code review", "check this pull request for issues", pastes a pull-request URL and asks for feedback, wants a nitpicky review, or wants a merge-readiness assessment. Works with any git hosting provider (GitHub, GitLab, Bitbucket, etc.).
+version: 2.2.2
 ---
 
 # Otterbot Review
@@ -81,7 +81,7 @@ reviewing agent's identity; do not guess from similar prose or another
 reviewer's comments.
 
 Record the current full PR/MR head SHA before gathering evidence. The root
-review marker and Review History must carry that SHA, so a later pass can
+review marker and History must carry that SHA, so a later pass can
 identify the exact revision reviewed. Immediately before any delivery action,
 refetch the head SHA. If it changed, discard the pending report and repeat the
 review against the new head; never publish a verdict for stale code.
@@ -104,8 +104,8 @@ history and a mapping aid, not evidence that a concern still exists:
    `otterbot-finding` ID that is retained across re-reviews, even if its file
    path or line range moved. Create a new ID only for a new independent issue.
 3. Update the original Council review body when the host supports editing the
-   identified review/comment. Replace its Summary, Verdict, Specialist Scores,
-   Findings Overview, Testing, and Review History with the newly reconciled
+   identified review/comment. Replace its Summary, Verdict, Scorecard,
+   Findings, Testing, and History with the newly reconciled
    result. Use strikethrough for resolved or no-longer-applicable findings,
    retain their resolution reason, and do not erase historical evidence.
 4. If the host cannot edit a submitted review/comment, post exactly one dated
@@ -113,6 +113,14 @@ history and a mapping aid, not evidence that a concern still exists:
    original review ID or URL. It contains the full updated report and history;
    do not create another complete root review. State plainly that the host
    made an in-place update unavailable.
+5. After a superseding formal review is accepted, dismiss the prior
+   attributable formal review when the host supports dismissal and the
+   reviewing agent has permission. Use a concise dismissal message linking to
+   the superseding review and stating why it is superseded. Verify the prior
+   review state is dismissed. Do not dismiss another author's review. If the
+   host cannot dismiss it or the agent lacks permission, state that it remains
+   visible in History and the delivery summary; never claim it was
+   hidden or resolved.
 
 Resolve an inline thread only when it was authored by the reviewing agent,
 maps to an original Otterbot finding, and current evidence directly verifies
@@ -121,8 +129,8 @@ thread-resolution operation and add a concise resolution note that references
 the original review. Never resolve another author's thread, an ambiguous
 thread, or a thread merely because it is outdated. If thread resolution or
 comment editing is unsupported, add one concise reply on the original thread
-when supported; otherwise record the status in the re-review's Findings
-Overview and Review History.
+when supported; otherwise record the status in the re-review's Findings and
+History.
 
 ### Local review mode
 
@@ -521,8 +529,8 @@ main Review Council post.
 
 Produce the report in exactly this structure. Keep it clean and scannable:
 plain `####` section headings for Summary and Verdict, then collapsible
-`<details>` sections for Specialist Scores, Findings Overview, Testing, and,
-on a re-review, Review History.
+`<details>` sections for Scorecard, Findings, Testing, and, on a re-review,
+History.
 In PR review mode, start with a `####` title heading using the fetched PR/MR
 title exactly as the host reports it: `#### 🦦 Council Review &middot; <pr_title>`.
 Do not invent, paraphrase, or synthesize a title. In local review mode, where no
@@ -559,10 +567,10 @@ in the body.
 Open the body with only the 1-2 sentence explanation of the call. Do not add
 specialist notes, specialist feedback subsections, or a generic must-fix list
 under Verdict; fold any decision-relevant specialist rationale into the
-Specialist Scores cards below so the top-level decision stays short.
+Scorecard cards below so the top-level decision stays short.
 
 <details>
-<summary>🦦 <strong>Specialist Scores</strong></summary>
+<summary>🦦 <strong>Scorecard</strong></summary>
 
 <br>
 
@@ -607,7 +615,7 @@ Use a score-status circle between the specialist name and the value:
 - `81-99` → `🟢`
 - `100` → `🔵`
 
-Use category emojis consistently in Specialist Scores cards:
+Use category emojis consistently in Scorecard cards:
 
 - Product Intent & Acceptance → `📋`
 - Functional Correctness & State → `🎯`
@@ -686,7 +694,7 @@ Do not add a separate **Score Notes** section or an overall score.
 </details>
 
 <details>
-<summary>🔎 <strong>Findings Overview</strong></summary>
+<summary>🔎 <strong>Findings</strong></summary>
 
 <br>
 
@@ -782,7 +790,7 @@ Blank line between cards, no horizontal rules.
 </details>
 
 <details>
-<summary>🕰️ <strong>Review History</strong></summary>
+<summary>🕰️ <strong>History</strong></summary>
 
 <br>
 
@@ -878,6 +886,23 @@ Delivery follows the mode determined in §1:
   re-review and name the prior review's resolved, persisted, or newly
   discovered findings that justify the changed or unchanged call.
 
+  When using a CLI or API, serialize the complete Review Council Markdown into
+  the request's `body` value. A local filename, `@path` shorthand, shell
+  reference, or other file pointer is never itself a valid review body. Before
+  treating a post as delivered, fetch the created or updated review/comment
+  and verify its body begins with the required Otterbot marker and contains the
+  expected Council heading, Summary, and Verdict. If verification fails,
+  correct the editable review/comment with the complete Markdown and re-fetch
+  it; if correction is unavailable, state the delivery failure rather than
+  claiming the report was posted.
+
+  Once a superseding formal review has been successfully verified, dismiss the
+  prior attributable formal review when the host supports dismissal and the
+  agent has permission, so its obsolete review state no longer remains active.
+  Add the dismissal outcome to History and the delivery summary. Never
+  dismiss another author's review; if dismissal is unsupported or denied,
+  report the prior review as still visible rather than claiming it is hidden.
+
   After posting, verify the host accepted the review/comment and, when possible,
   that the PR/MR review decision reflects the Verdict. Then show the
   review URL, final verdict, and a concise inline-comment summary in the
@@ -908,7 +933,7 @@ Delivery follows the mode determined in §1:
   otterbot-review --resolve` only for an original inline comment whose
   resolution was directly verified. Because this surface has no documented
   body-update operation, add one dated reply to the original Council comment
-  containing the superseding report and Review History, rather than creating a
+  containing the superseding report and History, rather than creating a
   second unrelated root comment. Use `sc worktree review-reply` for any
   continued or resolved original-thread status; do not alter other authors'
   comments.
@@ -978,21 +1003,21 @@ for what a full pass looks like):
 &middot; <literal PR/MR title>` heading only in PR mode, `#### 📝 Summary`
       above the opening paragraph, a `#### <emoji> Verdict · <verdict>` heading
       immediately below the Summary, no horizontal rules, and collapsible
-      `<details>` sections for Specialist Scores, Findings Overview, Testing,
-      and Review History on a PR re-review
+      `<details>` sections for Scorecard, Findings, Testing, and History on a
+      PR re-review
 - [ ] Product intent and acceptance are represented by the scored Product
       Intent & Acceptance Specialist card, not a standalone requirements section
 - [ ] The Verdict section is short: only the verdict heading and a 1-2 sentence
-      explanation, with specialist rationale folded into Specialist Scores
+      explanation, with specialist rationale folded into Scorecard
       instead of separate specialist subsections or feedback bullets
 - [ ] Source-specific findings are posted as inline comments when the host
-      supports inline comments; the collapsible Findings Overview keeps only a
+      supports inline comments; the collapsible Findings section keeps only a
       reduced findings list with one severity section per finding type,
       blockquote bullets underneath, and pointers to inline locations
 - [ ] Findings without precise line locations, or findings in environments
       without inline comment support, use the full finding card format in the
       main post
-- [ ] Specialist Scores is collapsible and its cards are plain blockquotes
+- [ ] Scorecard is collapsible and its cards are plain blockquotes
       with no GitHub alert labels, include exactly one card for each of the
       seven core and each activated conditional category, omit dormant
       conditional and `N/A` cards, include category emojis in the heading, put
@@ -1008,9 +1033,9 @@ for what a full pass looks like):
       whenever those details are available
 - [ ] A re-review's editable root report was updated in place when supported;
       otherwise exactly one dated superseding root report was posted with an
-      original-review link, updated Verdict justification, and Review History
+      original-review link, updated Verdict justification, and History
       immediately after Testing
-- [ ] A re-review's Review History has timestamped original and current cards,
+- [ ] A re-review's History has timestamped original and current cards,
       each with its review reference, verdict, findings summary, and status
 - [ ] Only verified, attributable Otterbot inline threads were resolved;
       continued findings were updated or replied to, and new findings reference
@@ -1020,6 +1045,14 @@ for what a full pass looks like):
 - [ ] When an immutable prior formal review could still affect the host's
       review decision, a new formal review was submitted with the updated
       verdict, alongside the one linked superseding Council report if needed
+- [ ] Every API/CLI delivery serialized the complete Council Markdown as the
+      review/comment `body`, never as a filename or file-reference shorthand;
+      the fetched delivery body begins with the Otterbot marker and contains
+      the Council heading, Summary, and Verdict
+- [ ] After a verified superseding formal review, the prior attributable formal
+      review was dismissed when host support and permission allowed; otherwise
+      the inability to dismiss it was stated in History and the delivery
+      summary
 - [ ] Delivery matches mode: PR mode posts the main Review Council post to the
       PR/MR with the correct verdict semantics, posts inline comments when
       available, verifies the host accepted the review/comment, **and** shows
@@ -1059,7 +1092,9 @@ summary in the conversation.
 attributable Otterbot Council review, then run the full council again. Update
 that review and its own verified inline threads when supported. If the host
 cannot edit the original, post one timestamped re-review that supersedes and
-links to it. Include the updated verdict justification and a Review History
+links to it, verify the delivered body is complete Council Markdown rather than
+a file reference, then dismiss the obsolete attributable formal review when the
+host permits it. Include the updated verdict justification and a History
 section after Testing; keep resolved or no-longer-applicable findings crossed
 out with their status rather than silently deleting them.
 
