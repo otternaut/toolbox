@@ -1,7 +1,7 @@
 ---
 name: otterbot-review
 description: Perform an adversarial principal-architect code review that tries to prove the change unsafe before approving it, producing a structured Review Council post with a Scorecard and inline source-specific findings. Given a pull/merge request URL, reviews that PR and delivers the report with the correct verdict semantics — approving when the verdict is Ship It! or Comment Only, and requesting changes otherwise. Given no URL, reviews the current local code changes and presents the report in the conversation. Use this whenever the user asks to "review this PR", "review my diff", "analyze this code change", "do a code review", "check this pull request for issues", pastes a pull-request URL and asks for feedback, wants a nitpicky review, or wants a merge-readiness assessment. Works with any git hosting provider (GitHub, GitLab, Bitbucket, etc.).
-version: 2.4.0
+version: 2.4.1
 ---
 
 # Otterbot Review
@@ -124,11 +124,24 @@ history and a mapping aid, not evidence that a concern still exists:
 
 On GitHub, every re-review is a new visible Otterbot generation. This
 GitHub-specific lifecycle overrides the in-place comment-update guidance above:
-collect the GraphQL node IDs for every attributable prior Otterbot
-`IssueComment` and `PullRequestReviewComment`, including old Council roots,
-inline findings, and Otterbot replies. Deliver and verify the new Council
-review and its current inline findings first. Then minimize each collected
-prior comment with the GitHub CLI and the `OUTDATED` classifier:
+collect the GraphQL node IDs and thread IDs for every attributable prior
+Otterbot `IssueComment` and `PullRequestReviewComment`, including old Council
+roots, inline findings, and Otterbot replies. Deliver and verify the new
+Council review and its current inline findings first. Then classify every prior
+inline finding thread before minimizing anything:
+
+1. **Resolved or no longer applicable:** when current evidence directly proves
+   the finding is resolved or no longer applicable, resolve the attributable
+   thread and leave its comments unminimized. This preserves the discussion and
+   shows its resolved state; do not hide it merely because it is old.
+2. **Still active:** recreate the finding in the new generation with the same
+   stable finding ID, then minimize the prior attributable inline comment with
+   the GitHub CLI and the `OUTDATED` classifier. Do not resolve that thread.
+3. **Unclear:** do not resolve or minimize the thread. Report the uncertainty
+   rather than treating age as evidence of resolution.
+
+Minimize only comments eligible under step 2, plus attributable obsolete root
+`IssueComment`s that are not part of a resolved thread:
 
 ```bash
 gh api graphql \
@@ -140,29 +153,30 @@ gh api graphql \
   -f id="$comment_node_id"
 ```
 
-Run this command once for every collected prior comment; do not merely describe
+Run this command once for every eligible prior comment; do not merely describe
 or recommend it. Verify each response reports `isMinimized: true` and
 `minimizedReason: "OUTDATED"`, and refetch the PR discussion to confirm that
-only the newest Otterbot comment generation remains expanded. Never minimize
-another author's comment. A `PullRequestReview` is not a minimizable comment:
-dismiss its obsolete formal review state separately under step 5. If any
-eligible prior comment cannot be minimized, report its ID and the failure, and
-do not claim that only the newest review is visible. A finding that remains
-active must be recreated in the new generation with the same stable
-`otterbot-finding` ID before its prior comment is minimized.
+resolved threads remain visible and resolved, while superseded active findings
+are minimized. Never minimize another author's comment. A `PullRequestReview`
+is not a minimizable comment: dismiss its obsolete formal review state
+separately under step 5. If a resolved attributable thread cannot be resolved,
+or an eligible prior comment cannot be minimized, report its ID and the
+failure. A finding that remains active must be recreated in the new generation
+with the same stable `otterbot-finding` ID before its prior comment is
+minimized.
 
-On the hosting provider, resolve an inline thread only when it was authored by
-the reviewing agent, maps to an original Otterbot finding, and current evidence
-directly verifies the finding is resolved or no longer applicable. Use the
-host's supported thread-resolution operation and add a concise resolution note
-that references the original review. Never resolve another author's thread, an
-ambiguous thread, or a thread merely because it is outdated. If thread
-resolution or comment editing is unsupported, add one concise reply on the
-original thread when supported; otherwise record the status in the re-review's
-Findings and History. The super.engineering in-app surface has a separate
-generation-archiving lifecycle in §7: all attributable comments from an older
-Otterbot delivery are resolved when the new delivery supersedes them, while
-active findings are recreated as current-generation inline comments.
+On the hosting provider, resolve an inline thread only when it contains an
+attributable Otterbot finding and current evidence directly verifies that
+finding is resolved or no longer applicable. Resolve it even if other
+participants replied; never resolve another reviewer's independent finding, an
+ambiguous thread, or a thread merely because it is outdated. Keep the resolved
+thread's comments visible unless the host offers no better lifecycle. If thread
+resolution or comment editing is unsupported, add one concise resolution reply
+on the original thread when supported; otherwise record the status in the
+re-review's Findings and History. The super.engineering in-app surface has a
+separate generation-archiving lifecycle in §7: all attributable comments from
+an older Otterbot delivery are resolved when the new delivery supersedes them,
+while active findings are recreated as current-generation inline comments.
 
 ### Local review mode
 
@@ -921,12 +935,16 @@ Delivery follows the mode determined in §1:
   re-review and name the prior review's resolved, persisted, or newly
   discovered findings that justify the changed or unchanged call.
 
-  On GitHub, do not leave the earlier comment generation expanded after the
-  replacement is verified. Use the required `gh api graphql`
-  `minimizeComment` command from "PR re-review mode" with
-  `classifier: OUTDATED` for every attributable prior Council root, inline
-  finding, and Otterbot reply. Verify every minimization; thread resolution or
-  formal-review dismissal does not substitute for hiding these comments.
+  On GitHub, classify every attributable prior inline finding after the
+  replacement is verified. Resolve and preserve the comments for a finding
+  directly verified as resolved or no longer applicable. For a still-active
+  finding, recreate its stable ID in the new generation, then use the required
+  `gh api graphql` `minimizeComment` command from "PR re-review mode" with
+  `classifier: OUTDATED` for the superseded prior inline comment. Do not
+  resolve an active thread or minimize a resolved thread merely to make the
+  discussion shorter. Minimize obsolete attributable Council root
+  `IssueComment`s when applicable; dismiss, rather than minimize, formal
+  `PullRequestReview`s.
 
   When using a CLI or API, serialize the complete Review Council Markdown into
   the request's `body` value. A local filename, `@path` shorthand, shell
@@ -1095,16 +1113,17 @@ for what a full pass looks like):
 - [ ] A re-review's History preserves cumulative chronological cards for the
       original, every intermediate re-review, and the current review, each with
       its review reference, verdict, findings summary, and status
-- [ ] On the hosting provider, only directly verified, attributable Otterbot
-      inline threads were resolved; continued findings were updated or replied
-      to, and new findings reference the original review without duplicating
-      active feedback
+- [ ] On the hosting provider, every directly verified, attributable resolved
+      or no-longer-applicable Otterbot inline finding thread was resolved and
+      its comments preserved; continued findings were recreated or updated
+      without duplicating active feedback
 - [ ] On a GitHub re-review, after the new generation was delivered and
-      verified, `gh api graphql` `minimizeComment` was run for every
-      attributable prior Otterbot Council root, inline finding, and reply with
-      `classifier: OUTDATED`; each response and the refetched discussion
-      confirmed it was minimized, while continued findings were recreated in
-      the new generation with their stable IDs
+      verified, directly verified resolved or no-longer-applicable threads
+      were resolved and left visible. `gh api graphql` `minimizeComment` was
+      run with `classifier: OUTDATED` only for superseded prior comments tied
+      to active findings (after recreation with stable IDs) and eligible
+      obsolete root `IssueComment`s; each response and the refetched discussion
+      confirmed the correct resolved or minimized state
 - [ ] Every PR root report includes its full reviewed head SHA in the hidden
       Otterbot marker; every inline finding has a stable hidden finding ID
 - [ ] When an immutable prior formal review could still affect the host's
