@@ -331,6 +331,14 @@ it owns that thread and the concurrent test directly verifies the fix. It
 updates the still-active Medium thread, and posts the new Low finding inline
 with a reference to the original review.
 
+If this review is also delivered to the super.engineering in-app surface, the
+agent uses its generation lifecycle there rather than copying the hosting
+provider's thread lifecycle. It resolves every attributable prior
+`otterbot-review` root, inline comment, and reply as superseded, posts one new
+Council root containing the cumulative History above, then recreates the active
+Medium and Low findings as current-generation inline comments. The fixed High
+finding remains in History but does not get a new inline thread.
+
 ## Example 3: Local review mode
 
 **User:** "review my changes before I open a PR"
