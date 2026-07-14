@@ -1,7 +1,7 @@
 ---
 name: otterbot-review
 description: Perform an adversarial principal-architect code review that tries to prove the change unsafe before approving it, producing a structured Review Council post with a Scorecard and inline source-specific findings. Given a pull/merge request URL, reviews that PR and delivers the report with the correct verdict semantics — approving when the verdict is Ship It! or Comment Only, and requesting changes otherwise. Given no URL, reviews the current local code changes and presents the report in the conversation. Use this whenever the user asks to "review this PR", "review my diff", "analyze this code change", "do a code review", "check this pull request for issues", pastes a pull-request URL and asks for feedback, wants a nitpicky review, or wants a merge-readiness assessment. Works with any git hosting provider (GitHub, GitLab, Bitbucket, etc.).
-version: 2.3.0
+version: 2.4.0
 ---
 
 # Otterbot Review
@@ -121,6 +121,35 @@ history and a mapping aid, not evidence that a concern still exists:
    host cannot dismiss it or the agent lacks permission, state that it remains
    visible in History and the delivery summary; never claim it was
    hidden or resolved.
+
+On GitHub, every re-review is a new visible Otterbot generation. This
+GitHub-specific lifecycle overrides the in-place comment-update guidance above:
+collect the GraphQL node IDs for every attributable prior Otterbot
+`IssueComment` and `PullRequestReviewComment`, including old Council roots,
+inline findings, and Otterbot replies. Deliver and verify the new Council
+review and its current inline findings first. Then minimize each collected
+prior comment with the GitHub CLI and the `OUTDATED` classifier:
+
+```bash
+gh api graphql \
+  -f query='mutation($id: ID!) {
+    minimizeComment(input: {subjectId: $id, classifier: OUTDATED}) {
+      minimizedComment { isMinimized minimizedReason }
+    }
+  }' \
+  -f id="$comment_node_id"
+```
+
+Run this command once for every collected prior comment; do not merely describe
+or recommend it. Verify each response reports `isMinimized: true` and
+`minimizedReason: "OUTDATED"`, and refetch the PR discussion to confirm that
+only the newest Otterbot comment generation remains expanded. Never minimize
+another author's comment. A `PullRequestReview` is not a minimizable comment:
+dismiss its obsolete formal review state separately under step 5. If any
+eligible prior comment cannot be minimized, report its ID and the failure, and
+do not claim that only the newest review is visible. A finding that remains
+active must be recreated in the new generation with the same stable
+`otterbot-finding` ID before its prior comment is minimized.
 
 On the hosting provider, resolve an inline thread only when it was authored by
 the reviewing agent, maps to an original Otterbot finding, and current evidence
@@ -892,6 +921,13 @@ Delivery follows the mode determined in §1:
   re-review and name the prior review's resolved, persisted, or newly
   discovered findings that justify the changed or unchanged call.
 
+  On GitHub, do not leave the earlier comment generation expanded after the
+  replacement is verified. Use the required `gh api graphql`
+  `minimizeComment` command from "PR re-review mode" with
+  `classifier: OUTDATED` for every attributable prior Council root, inline
+  finding, and Otterbot reply. Verify every minimization; thread resolution or
+  formal-review dismissal does not substitute for hiding these comments.
+
   When using a CLI or API, serialize the complete Review Council Markdown into
   the request's `body` value. A local filename, `@path` shorthand, shell
   reference, or other file pointer is never itself a valid review body. Before
@@ -1063,6 +1099,12 @@ for what a full pass looks like):
       inline threads were resolved; continued findings were updated or replied
       to, and new findings reference the original review without duplicating
       active feedback
+- [ ] On a GitHub re-review, after the new generation was delivered and
+      verified, `gh api graphql` `minimizeComment` was run for every
+      attributable prior Otterbot Council root, inline finding, and reply with
+      `classifier: OUTDATED`; each response and the refetched discussion
+      confirmed it was minimized, while continued findings were recreated in
+      the new generation with their stable IDs
 - [ ] Every PR root report includes its full reviewed head SHA in the hidden
       Otterbot marker; every inline finding has a stable hidden finding ID
 - [ ] When an immutable prior formal review could still affect the host's
@@ -1118,13 +1160,17 @@ summary in the conversation.
 
 → Fetch the current PR data and visible thread state, identify the prior
 attributable Otterbot Council review, then run the full council again. Update
-that review and its own verified inline threads when supported. If the host
-cannot edit the original, post one timestamped re-review that supersedes and
-links to it, verify the delivered body is complete Council Markdown rather than
-a file reference, then dismiss the obsolete attributable formal review when the
-host permits it. Include the updated verdict justification and a History
-section after Testing; keep resolved or no-longer-applicable findings crossed
-out with their status rather than silently deleting them.
+that review and its own verified inline threads when supported, except on
+GitHub, where each re-review is a new visible generation. On GitHub, verify the
+new delivery, then run the required `gh api graphql` `minimizeComment` command
+with `classifier: OUTDATED` once for every attributable prior Otterbot comment
+and verify that each is hidden. If another host cannot edit the original, post
+one timestamped re-review that supersedes and links to it, verify the delivered
+body is complete Council Markdown rather than a file reference, then dismiss
+the obsolete attributable formal review when the host permits it. Include the
+updated verdict justification and a History section after Testing; keep
+resolved or no-longer-applicable findings crossed out with their status rather
+than silently deleting them.
 
 **Local review mode** — no URL, uncommitted changes exist:
 

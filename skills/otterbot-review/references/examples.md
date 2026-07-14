@@ -198,6 +198,9 @@ unverified, and a new missing metric is found. The host cannot edit the
 submitted review, so the agent posts exactly one re-review comment that links
 to and supersedes it. It also submits a new Comment Only formal review so the
 earlier Request Changes decision no longer represents the current revision.
+After verifying the replacement and recreating the active Redis finding, it
+uses `gh api graphql` to minimize every prior attributable Otterbot comment
+with `classifier: OUTDATED`.
 
 **Report produced:**
 
@@ -274,7 +277,7 @@ findings do not block a safe merge.
 
 🟡 **Medium - 1 Issue**
 
-> - Redis-down behavior remains untested; original inline comment updated with this re-review status.
+> - Redis-down behavior remains untested; recreated as a current-generation inline comment with its stable finding ID.
 
 🔵 **Low - 1 Issue**
 
@@ -326,10 +329,15 @@ findings do not block a safe merge.
 </details>
 ```
 
-The agent replies to and resolves only the original High inline thread, because
-it owns that thread and the concurrent test directly verifies the fix. It
-updates the still-active Medium thread, and posts the new Low finding inline
-with a reference to the original review.
+The agent resolves only the original High inline thread, because it owns that
+thread and the concurrent test directly verifies the fix. It recreates the
+still-active Medium finding with its stable ID and posts the new Low finding
+inline with a reference to the original review. After verifying those new
+comments, it runs the required `gh api graphql` `minimizeComment` mutation with
+`classifier: OUTDATED` once for every prior Otterbot Council root, inline
+finding, and reply. It verifies `isMinimized: true` and
+`minimizedReason: "OUTDATED"` for each one, then refetches the discussion to
+confirm that only the current Otterbot generation remains expanded.
 
 If this review is also delivered to the super.engineering in-app surface, the
 agent uses its generation lifecycle there rather than copying the hosting
